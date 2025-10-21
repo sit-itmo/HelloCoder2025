@@ -70,6 +70,22 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <OutDir>$(SolutionDir)obj\$(Configuration)\$(ProjectName)</OutDir>
+    <IntDir>$(SolutionDir)obj\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <OutDir>$(SolutionDir)obj\$(Configuration)\$(ProjectName)</OutDir>
+    <IntDir>$(SolutionDir)obj\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)obj\$(Configuration)\$(ProjectName)</OutDir>
+    <IntDir>$(SolutionDir)obj\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)obj\$(Configuration)\$(ProjectName)</OutDir>
+    <IntDir>$(SolutionDir)obj\$(Configuration)\$(ProjectName)</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -78,11 +94,16 @@
       <ConformanceMode>true</ConformanceMode>
       <PreprocessToFile>false</PreprocessToFile>
       <PreprocessKeepComments>false</PreprocessKeepComments>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
+copy "$(TargetPath)" "$(SolutionDir)\bin\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -97,6 +118,10 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
+copy "$(TargetPath)" "$(SolutionDir)\bin\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -111,6 +136,10 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
+copy "$(TargetPath)" "$(SolutionDir)\bin\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -125,6 +154,10 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
+copy "$(TargetPath)" "$(SolutionDir)\bin\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="hello.c" />
