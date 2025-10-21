@@ -3,13 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.14.36310.24
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello", "hello\hello.vcxproj", "{A40DA35D-0798-433F-A02E-E62FFA65BBC0}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello", "hello_src\hello.vcxproj", "{A40DA35D-0798-433F-A02E-E62FFA65BBC0}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello32", "hello32\hello32.vcxproj", "{828E9025-E6A6-4DA5-9C38-40112788737E}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello32", "hello_src\hello32.vcxproj", "{828E9025-E6A6-4DA5-9C38-40112788737E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello64", "hello64\hello64.vcxproj", "{2C3F94F2-BB7A-4137-A648-C469B14E6784}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello64", "hello_src\hello64.vcxproj", "{2C3F94F2-BB7A-4137-A648-C469B14E6784}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello_none", "hello_none\hello_none.vcxproj", "{A44FC7FD-9D7A-4239-A8B5-2E76D5DC05B4}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello_none", "hello_src\hello_none.vcxproj", "{A44FC7FD-9D7A-4239-A8B5-2E76D5DC05B4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
