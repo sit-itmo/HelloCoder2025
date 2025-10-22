@@ -3,6 +3,7 @@
 #else
 int printf(const char* ppp)
 {
+    ppp;
     return 0;
 }
 
@@ -10,6 +11,9 @@ int printf(const char* ppp)
 
 int main(int argc, char *argv, char *env[])
 {
+    argc;
+    argv;
+    env;
     printf("Hello Coder");
     while (1);
     return 0;

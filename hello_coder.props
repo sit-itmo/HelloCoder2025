@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <IntDir>$(SolutionDir)obj\$(Configuration)\$(ProjectName)\</IntDir>
+    <OutDir>$(SolutionDir)obj\$(Configuration)\$(ProjectName)\</OutDir>
+  </PropertyGroup>
+  
+  <ItemDefinitionGroup>
+    <PostBuildEvent>
+      <Command>
+        if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
+        copy "$(TargetPath)" "$(SolutionDir)\bin\"
+      </Command>
+      <Message>Copying output to $(SolutionDir)\bin\</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+
+</Project>

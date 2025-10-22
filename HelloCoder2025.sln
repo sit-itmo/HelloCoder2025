@@ -13,6 +13,13 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello_none", "hello_src\hel
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "arcanoid", "arcanoid\arcanoid.vcxproj", "{659B7966-3618-4F20-9442-0D12084A6EAE}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "root", "root", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		hello_coder.props = hello_coder.props
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "hello_src", "hello_src", "{A01B6D17-B475-42FF-AA31-319239177F6D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -64,6 +71,12 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A40DA35D-0798-433F-A02E-E62FFA65BBC0} = {A01B6D17-B475-42FF-AA31-319239177F6D}
+		{828E9025-E6A6-4DA5-9C38-40112788737E} = {A01B6D17-B475-42FF-AA31-319239177F6D}
+		{2C3F94F2-BB7A-4137-A648-C469B14E6784} = {A01B6D17-B475-42FF-AA31-319239177F6D}
+		{A44FC7FD-9D7A-4239-A8B5-2E76D5DC05B4} = {A01B6D17-B475-42FF-AA31-319239177F6D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {62270D29-1595-4EEC-9034-32023931E78E}
