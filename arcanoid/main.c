@@ -1,267 +1,278 @@
-// win_putpixel_demo.c
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-#include <stdint.h>
-#include <stdbool.h>
 #include <math.h>
+
+#define ARCANOID_WINDOW_CLASS L"ArcanoidWindowClass"
 
 #define GET_X_LPARAM(lp) ((int)(short)LOWORD(lp))
 #define GET_Y_LPARAM(lp) ((int)(short)HIWORD(lp))
 
-typedef struct {
-    HBITMAP     hbm;
-    HDC         hdc;        // совместимый DC для бэкбуфера
-    void* bits;       // указатель на пиксели
-    int         width;
-    int         height;
-    int         stride;     // байт на строку
-    BITMAPINFO  bmi;
-} Backbuffer;
+typedef union _AG_Color
+{
+    UINT32 ARGB; // => 0xAARRGGBB;
+    struct
+    {
+        BYTE B;
+        BYTE G;
+        BYTE R;
+        BYTE A;
+    };
+    struct
+    {
+        UINT32 RGB : 24;
+        UINT32 Alpha : 8;
+    };
+}AG_Color;
 
-static const wchar_t* kClassName = L"PutPixelDemoWndClass";
-static Backbuffer g_bb = { 0 };
-static bool g_drawing = false;
-static int  g_lastX = -1, g_lastY = -1;
-static int  g_brushRadius = 2;        // радиус "кисти" в пикселях
-static uint32_t g_color = 0xFFFF3C00; // ARGB (A=FF, R=FF, G=3C, B=00) — оранжевый
 
-// --- Утилиты ----------------------------------------------------------------
+typedef struct AG_BackBuffer
+{
+    HBITMAP     hBitmap;
+    HDC         hDC;
+    AG_Color* pPixels;
+    int         Width;
+    int         Height;
+    BITMAPINFO  BitmapHeader;
+} AG_BackBuffer;
 
-static void DestroyBackbuffer(void) {
-    if (g_bb.hdc) { DeleteDC(g_bb.hdc); g_bb.hdc = NULL; }
-    if (g_bb.hbm) { DeleteObject(g_bb.hbm); g_bb.hbm = NULL; }
-    g_bb.bits = NULL;
-    g_bb.width = g_bb.height = g_bb.stride = 0;
+
+
+AG_BackBuffer g_AG_RenderBuffer = { 0 };
+
+void AG_BackbufferDestroy(AG_BackBuffer* p_renderBuffer)
+{
+    if(p_renderBuffer == NULL)
+    { 
+        return;
+    }
+    if (p_renderBuffer->hDC)
+    { 
+        DeleteDC(p_renderBuffer->hDC);
+        p_renderBuffer->hDC = NULL;
+    }
+
+    p_renderBuffer->pPixels = NULL;
+    if (p_renderBuffer->hBitmap) 
+    { 
+        DeleteObject(p_renderBuffer->hBitmap);
+        p_renderBuffer->hBitmap = NULL;
+    }
+    p_renderBuffer->Width = p_renderBuffer->Height = 0;
 }
 
-static bool CreateBackbuffer(HWND hwnd, int w, int h) {
-    if (w <= 0 || h <= 0) return false;
-    DestroyBackbuffer();
+BOOL AG_BackbufferCreate(AG_BackBuffer* p_renderBuffer, HWND hwnd, int w, int h)
+{
+    if (p_renderBuffer == NULL)
+    {
+        return FALSE;
+    }
+    if (w <= 0 || h <= 0)
+    {
+        return FALSE;
+    }
+    AG_BackbufferDestroy(p_renderBuffer);
 
-    ZeroMemory(&g_bb.bmi, sizeof(g_bb.bmi));
-    g_bb.bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
-    g_bb.bmi.bmiHeader.biWidth = w;
-    g_bb.bmi.bmiHeader.biHeight = -h;      // top-down DIB
-    g_bb.bmi.bmiHeader.biPlanes = 1;
-    g_bb.bmi.bmiHeader.biBitCount = 32;      // BGRA 8:8:8:8
-    g_bb.bmi.bmiHeader.biCompression = BI_RGB;
+    ZeroMemory(&p_renderBuffer->BitmapHeader, sizeof(p_renderBuffer->BitmapHeader));
+    p_renderBuffer->BitmapHeader.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    p_renderBuffer->BitmapHeader.bmiHeader.biWidth = w;
+    p_renderBuffer->BitmapHeader.bmiHeader.biHeight = -h;
+    p_renderBuffer->BitmapHeader.bmiHeader.biPlanes = 1;
+    p_renderBuffer->BitmapHeader.bmiHeader.biBitCount = 32;// BGRA
+    p_renderBuffer->BitmapHeader.bmiHeader.biCompression = BI_RGB;
 
     HDC wndDC = GetDC(hwnd);
-    g_bb.hdc = CreateCompatibleDC(wndDC);
-    g_bb.hbm = CreateDIBSection(wndDC, &g_bb.bmi, DIB_RGB_COLORS, &g_bb.bits, NULL, 0);
+    p_renderBuffer->hDC = CreateCompatibleDC(wndDC);
+    p_renderBuffer->hBitmap = CreateDIBSection(wndDC, &p_renderBuffer->BitmapHeader, DIB_RGB_COLORS, &p_renderBuffer->pPixels, NULL, 0);
     ReleaseDC(hwnd, wndDC);
 
-    if (!g_bb.hdc || !g_bb.hbm || !g_bb.bits) {
-        DestroyBackbuffer();
-        return false;
+    if (!p_renderBuffer->hDC || !p_renderBuffer->hBitmap || !p_renderBuffer->pPixels)
+    {
+        AG_BackbufferDestroy(p_renderBuffer);
+        return FALSE;
     }
 
-    SelectObject(g_bb.hdc, g_bb.hbm);
-    g_bb.width = w;
-    g_bb.height = h;
-    g_bb.stride = w * 4;
+    SelectObject(p_renderBuffer->hDC, p_renderBuffer->hBitmap);
+    p_renderBuffer->Width = w;
+    p_renderBuffer->Height = h;
 
-    // Заливка фона тёмно-серым
-    uint32_t* p = (uint32_t*)g_bb.bits;
-    for (int i = 0; i < w * h; ++i) p[i] = 0xFF202020;
-    return true;
+    AG_Color* p = (AG_Color*)p_renderBuffer->pPixels;
+    for (int i = 0; i < w * h; ++i)
+    {
+        p[i].ARGB = 0xFF202020;
+    }
+    return 1;
 }
 
-// «putpixel» в бэкбуфер (ARGB, хранение — BGRA; альфа игнорим при копировании)
-static inline void PutPixel(int x, int y, uint32_t argb) {
-    if (x < 0 || y < 0 || x >= g_bb.width || y >= g_bb.height || !g_bb.bits) return;
-    uint8_t a = (uint8_t)(argb >> 24);
-    uint8_t r = (uint8_t)(argb >> 16);
-    uint8_t g = (uint8_t)(argb >> 8);
-    uint8_t b = (uint8_t)(argb >> 0);
-
-    uint8_t* row = (uint8_t*)g_bb.bits + y * g_bb.stride;
-    uint32_t* px = (uint32_t*)(row + x * 4);
-
-    if (a == 255) {
-        // непрозрачный — просто записываем BGRA
-        *px = (uint32_t)(0xFF000000 | (b) | (g << 8) | (r << 16));
+inline void PutPixel(AG_BackBuffer* p_renderBuffer, int x, int y, AG_Color color)
+{
+    if (p_renderBuffer == NULL
+        || x < 0 || y < 0
+        || x >= p_renderBuffer->Width
+        || y >= p_renderBuffer->Height
+        || p_renderBuffer->pPixels
+        || color.A == 0)
+    {
+        return;
     }
-    else {
-        // простое альфа-смешивание поверх уже имеющегося пикселя
-        uint32_t dst = *px;
-        uint8_t db = (uint8_t)(dst & 0xFF);
-        uint8_t dg = (uint8_t)((dst >> 8) & 0xFF);
-        uint8_t dr = (uint8_t)((dst >> 16) & 0xFF);
+    AG_Color* p_px = p_renderBuffer->pPixels + y * p_renderBuffer->Width + x;
 
-        uint32_t invA = 255 - a;
-        uint8_t rb = (uint8_t)((b * a + db * invA) / 255);
-        uint8_t rg = (uint8_t)((g * a + dg * invA) / 255);
-        uint8_t rr = (uint8_t)((r * a + dr * invA) / 255);
-        *px = 0xFF000000 | rb | (rg << 8) | (rr << 16);
+    if (color.A == 255)
+    {
+        p_px->ARGB = color.ARGB;
     }
-}
-
-static void PutDisk(int cx, int cy, int radius, uint32_t color) {
-    if (radius <= 0) { PutPixel(cx, cy, color); return; }
-    int r2 = radius * radius;
-    int y0 = cy - radius, y1 = cy + radius;
-    for (int y = y0; y <= y1; ++y) {
-        int dy = y - cy;
-        int dx_max_sq = r2 - dy * dy;
-        if (dx_max_sq < 0) continue;
-        int dx = (int)(sqrt((double)dx_max_sq) + 0.5);
-        int x0 = cx - dx, x1 = cx + dx;
-        for (int x = x0; x <= x1; ++x) PutPixel(x, y, color);
+    else
+    {
+        int invA = 255 - color.A;
+        color.A = 0xFF;
+        color.B = (BYTE)((color.B * color.A + p_px->B * invA) / 255);
+        color.G = (BYTE)((color.G * color.A + p_px->G * invA) / 255);
+        color.R = (BYTE)((color.R * color.A + p_px->R * invA) / 255);
     }
 }
 
-static void DrawLine(int x0, int y0, int x1, int y1, int radius, uint32_t color) {
-    // Брезенхем + утолщение диском вдоль линии
-    int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
-    int dy = -abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
-    int err = dx + dy;
-    for (;;) {
-        PutDisk(x0, y0, radius, color);
-        if (x0 == x1 && y0 == y1) break;
-        int e2 = 2 * err;
-        if (e2 >= dy) { err += dy; x0 += sx; }
-        if (e2 <= dx) { err += dx; y0 += sy; }
+void AG_BufferClear(AG_BackBuffer* p_renderBuffer, AG_Color color)
+{
+    if (p_renderBuffer == NULL)
+    {
+        return;
+    }
+    color.A = 0xFF;
+    int count = p_renderBuffer->Width * p_renderBuffer->Height;
+    for (int i = 0; i < count; ++i)
+    {
+        p_renderBuffer->pPixels[i].ARGB = color.ARGB;
     }
 }
 
-static void ClearBuffer(uint32_t argb) {
-    if (!g_bb.bits) return;
-    uint8_t r = (uint8_t)(argb >> 16);
-    uint8_t g = (uint8_t)(argb >> 8);
-    uint8_t b = (uint8_t)(argb >> 0);
-    uint32_t bgra = 0xFF000000 | b | (g << 8) | (r << 16);
-    uint32_t* p = (uint32_t*)g_bb.bits;
-    int count = g_bb.width * g_bb.height;
-    for (int i = 0; i < count; ++i) p[i] = bgra;
-}
-
-// --- Оконная процедура -------------------------------------------------------
-
-static LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    switch (msg) {
-    case WM_CREATE: {
+LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) 
+{
+    switch (msg) 
+    {
+    case WM_CREATE: 
+    {
         RECT rc; GetClientRect(hwnd, &rc);
-        CreateBackbuffer(hwnd, rc.right - rc.left, rc.bottom - rc.top);
+        AG_BackbufferCreate(&g_AG_RenderBuffer, hwnd, rc.right - rc.left, rc.bottom - rc.top);
         return 0;
     }
 
-    case WM_SIZE: {
-        int w = LOWORD(lParam), h = HIWORD(lParam);
-        if (w > 0 && h > 0) {
-            CreateBackbuffer(hwnd, w, h);
+    case WM_SIZE: 
+    {
+        int w = LOWORD(lParam);
+        int h = HIWORD(lParam);
+        if (w > 0 && h > 0) 
+        {
+            AG_BackbufferCreate(&g_AG_RenderBuffer, hwnd, w, h);
             InvalidateRect(hwnd, NULL, FALSE);
         }
         return 0;
     }
 
-    case WM_LBUTTONDOWN: {
+    case WM_LBUTTONDOWN: 
+    {
+        int x = GET_X_LPARAM(lParam);
+        int y = GET_Y_LPARAM(lParam);
         SetCapture(hwnd);
-        g_drawing = true;
-        g_lastX = GET_X_LPARAM(lParam);
-        g_lastY = GET_Y_LPARAM(lParam);
-        PutDisk(g_lastX, g_lastY, g_brushRadius, g_color);
         InvalidateRect(hwnd, NULL, FALSE);
         return 0;
     }
 
-    case WM_MOUSEMOVE: {
-        if (g_drawing) {
-            int x = GET_X_LPARAM(lParam);
-            int y = GET_Y_LPARAM(lParam);
-            DrawLine(g_lastX, g_lastY, x, y, g_brushRadius, g_color);
-            g_lastX = x; g_lastY = y;
-            InvalidateRect(hwnd, NULL, FALSE);
-        }
+    case WM_MOUSEMOVE: 
+    {
+        int x = GET_X_LPARAM(lParam);
+        int y = GET_Y_LPARAM(lParam);
+        InvalidateRect(hwnd, NULL, FALSE);
         return 0;
     }
 
-    case WM_LBUTTONUP: {
-        if (g_drawing) {
-            int x = GET_X_LPARAM(lParam);
-            int y = GET_Y_LPARAM(lParam);
-            DrawLine(g_lastX, g_lastY, x, y, g_brushRadius, g_color);
-            g_drawing = false;
-            ReleaseCapture();
-            InvalidateRect(hwnd, NULL, FALSE);
-        }
+    case WM_LBUTTONUP: 
+    {
+        int x = GET_X_LPARAM(lParam);
+        int y = GET_Y_LPARAM(lParam);
+        ReleaseCapture();
+        InvalidateRect(hwnd, NULL, FALSE);
         return 0;
     }
 
-    case WM_MOUSEWHEEL: {
-        short delta = GET_WHEEL_DELTA_WPARAM(wParam);
-        if (delta > 0) g_brushRadius++;
-        else if (delta < 0 && g_brushRadius > 0) g_brushRadius--;
+    case WM_KEYDOWN: 
+    {
+        //wParam == key
         return 0;
     }
 
-    case WM_KEYDOWN: {
-        switch (wParam) {
-        case VK_ESCAPE: PostQuitMessage(0); break;
-        case 'C': case 'c': ClearBuffer(0xFF202020); InvalidateRect(hwnd, NULL, FALSE); break;
-        case VK_OEM_6: /* ] */ g_brushRadius++; break;
-        case VK_OEM_4: /* [ */ if (g_brushRadius > 0) g_brushRadius--; break;
-            // Пример смены цвета: 1..3
-        case '1': g_color = 0xFFFF3C00; break; // оранжевый
-        case '2': g_color = 0xFF00C8FF; break; // голубой
-        case '3': g_color = 0xFFFFD500; break; // жёлтый
-        }
-        return 0;
-    }
-
-    case WM_PAINT: {
+    case WM_PAINT: 
+    {
         PAINTSTRUCT ps;
         HDC hdc = BeginPaint(hwnd, &ps);
-        if (g_bb.hdc && g_bb.hbm) {
-            BitBlt(hdc, 0, 0, g_bb.width, g_bb.height, g_bb.hdc, 0, 0, SRCCOPY);
+        if (g_AG_RenderBuffer.hDC && g_AG_RenderBuffer.hBitmap) 
+        {
+            BitBlt(hdc, 0, 0, g_AG_RenderBuffer.Width, g_AG_RenderBuffer.Height, 
+                g_AG_RenderBuffer.hDC, 0, 0, SRCCOPY);
         }
         EndPaint(hwnd, &ps);
         return 0;
     }
 
     case WM_DESTROY:
-        DestroyBackbuffer();
+        AG_BackbufferDestroy(&g_AG_RenderBuffer);
         PostQuitMessage(0);
         return 0;
     }
     return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
-// --- Точка входа -------------------------------------------------------------
-
-int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, LPWSTR lpCmdLine, int nCmdShow) {
+HWND AG_WindowCreate(HINSTANCE hInst, int w, int h, LPWSTR p_caption)
+{
     WNDCLASSEXW wc = { sizeof(wc) };
     wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-    wc.lpfnWndProc = WndProc;
+    wc.lpfnWndProc = AG_WindowWndProc;
     wc.hInstance = hInst;
     wc.hCursor = LoadCursor(NULL, IDC_CROSS);
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-    wc.lpszClassName = kClassName;
+    wc.lpszClassName = ARCANOID_WINDOW_CLASS;
     wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     wc.hIconSm = wc.hIcon;
 
-    if (!RegisterClassExW(&wc)) return 0;
+    if (!RegisterClassExW(&wc))
+    {
+        return 0;
+    }
 
     DWORD style = WS_OVERLAPPEDWINDOW;
-    RECT r = { 0,0, 1024, 640 };
+    RECT r = { 0, 0, w, h };
     AdjustWindowRect(&r, style, FALSE);
 
     HWND hwnd = CreateWindowExW(
-        0, kClassName, L"PutPixel (DIB) — Win32 C",
+        0, ARCANOID_WINDOW_CLASS, p_caption,
         style, CW_USEDEFAULT, CW_USEDEFAULT,
         r.right - r.left, r.bottom - r.top,
         NULL, NULL, hInst, NULL);
 
-    if (!hwnd) return 0;
+    if (!hwnd)
+    {
+        return 0;
+    }
 
-    ShowWindow(hwnd, nCmdShow);
+    ShowWindow(hwnd, SW_NORMAL);
     UpdateWindow(hwnd);
 
-    // цикл сообщений
+    return hwnd;
+}
+
+
+int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, LPWSTR lpCmdLine, int nCmdShow) 
+{
+    HWND hwnd = AG_WindowCreate(hInst, 1024, 768, L"Arcanoid v0.1");
+    if (!hwnd)
+    {
+        return 0;
+    }
+    
+    // Main Loop
     MSG msg;
-    while (GetMessageW(&msg, NULL, 0, 0) > 0) {
+    while (GetMessageW(&msg, NULL, 0, 0) > 0) 
+    {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
-    return (int)msg.wParam;
+    return 0;
 }
