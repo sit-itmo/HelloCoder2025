@@ -7,20 +7,31 @@
 #include <stdarg.h>
 
 #ifdef _DEBUG
-#define AG_PRINT(a, ...) printf("\n%d: " a , __LINE__, ##__VA_ARGS__)
+#define AG_PRINTLN(a, ...) { printf("\n%d: %lld:" a , __LINE__, __rdtsc(), ##__VA_ARGS__); }
+#define AG_PRINT(a, ...) { printf( a , ##__VA_ARGS__); }
+#define AG_DEBUG(a, ...) { printf("\n%d: " a , __LINE__, ##__VA_ARGS__); }
+#define AG_TRACE(a, ...) { printf("\n%d: " a , __LINE__, ##__VA_ARGS__); }
+#define AG_ERROR(a, ...) { printf("\n%d ------------- ERROR!\n" a , __LINE__, ##__VA_ARGS__); __debugbreak();}
+#define AG_WARNING(a, ...) { printf("\n%d: warning! " a , __LINE__, ##__VA_ARGS__); }
 #else
-#define AG_PRINT(a, ...) 
+#define AG_PRINTLN(a, ...) {}
+#define AG_PRINT(a, ...) { }
+#define AG_DEBUG(a, ...) { }
+#define AG_TRACE(a, ...) { }
+#define AG_ERROR(a, ...) { }
+#define AG_WARNING(a, ...) { }
 #endif
 
 #if 0
-void AG_PRINT(const char* p_text, ...);
+void AG_PRINTLN(const char* p_text, ...);
 
-void AG_PRINT(const char* p_text, ...)
+void AG_PRINTLN(const char* p_text, ...)
 {
+
 #if 0
     va_list args;
     va_start(args, p_text);
-    printf("\n");
+    printf("\n%d: ", __LINE__);
     vprintf(p_text, args);
     va_end(args);
 #endif
@@ -427,7 +438,7 @@ void AG_UpdateBall(void)
                 aliveCount++;
                 if (AG_CircleIntersectsRect(nextX, nextY, g_ballR, b->x, b->y, b->w, b->h, &nx, &ny)) 
                 {
-                    AG_PRINT("HIT the block %d x %d!", c, r);
+                    AG_ERROR("HIT the block %d x %d!", c, r);
                     float dot = g_ballVX * nx + g_ballVY * ny;
                     g_ballVX -= 2 * dot * nx;
                     g_ballVY -= 2 * dot * ny;
@@ -542,7 +553,7 @@ LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
 
     case WM_KEYDOWN: 
     {
-        AG_PRINT("Key down %d!", wParam);
+        AG_PRINTLN("Key down %d!", wParam);
         switch (wParam) {
         case VK_ESCAPE: PostQuitMessage(0); break;
         case VK_LEFT:   g_keyLeft = 1; break;
@@ -557,7 +568,7 @@ LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
 
     case WM_KEYUP: 
     {
-        AG_PRINT("Key up %d!", wParam);
+        AG_PRINTLN("Key up %d!", wParam);
         switch (wParam) {
         case VK_LEFT:   g_keyLeft = 0; break;
         case VK_RIGHT:  g_keyRight = 0; break;
@@ -629,7 +640,7 @@ HWND AG_WindowCreate(HINSTANCE hInst, int w, int h, LPWSTR p_caption)
     return hwnd;
 }
 
-#ifdef _DEBUG
+#ifdef WIN32
 void InitConsole(void)
 {
     // Try to attach to parent console first; if none, create a new one.
@@ -672,26 +683,27 @@ int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, LPWSTR lpCmdLine, int nC
     InitConsole();
 #endif
 
-    AG_PRINT("Start Game %d x %d!",  w, h);
+
+    AG_PRINTLN("Start Game %d x %d!",  w, h);
 
     HWND hwnd = AG_WindowCreate(hInst, w, h, L"Arcanoid v0.1");
     if (!hwnd)
     {
-        printf("\nError: failed to create window!");
+        AG_PRINTLN("\nError: failed to create window!");
         return 0;
     }
-    AG_PRINT("Main window was created!");
+    AG_PRINTLN("Main window was created!");
 
 
     
     // Main Loop
     MSG msg;
-    AG_PRINT("Start main loop!");
+    AG_PRINTLN("Start main loop!");
     while (GetMessageW(&msg, NULL, 0, 0) > 0)
     {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
-    AG_PRINT("Completed!");
+    AG_PRINTLN("Completed!");
     return 0;
 }
