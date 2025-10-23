@@ -1,6 +1,31 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <math.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <io.h>
+#include <stdarg.h>
+
+#ifdef _DEBUG
+#define AG_PRINT(a, ...) printf("\n%d: " a , __LINE__, ##__VA_ARGS__)
+#else
+#define AG_PRINT(a, ...) 
+#endif
+
+#if 0
+void AG_PRINT(const char* p_text, ...);
+
+void AG_PRINT(const char* p_text, ...)
+{
+#if 0
+    va_list args;
+    va_start(args, p_text);
+    printf("\n");
+    vprintf(p_text, args);
+    va_end(args);
+#endif
+}
+#endif
 
 #define M_PI       3.14159265358979323846 
 #define ARCANOID_WINDOW_CLASS L"ArcanoidWindowClass"
@@ -402,6 +427,7 @@ void AG_UpdateBall(void)
                 aliveCount++;
                 if (AG_CircleIntersectsRect(nextX, nextY, g_ballR, b->x, b->y, b->w, b->h, &nx, &ny)) 
                 {
+                    AG_PRINT("HIT the block %d x %d!", c, r);
                     float dot = g_ballVX * nx + g_ballVY * ny;
                     g_ballVX -= 2 * dot * nx;
                     g_ballVY -= 2 * dot * ny;
@@ -516,6 +542,7 @@ LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
 
     case WM_KEYDOWN: 
     {
+        AG_PRINT("Key down %d!", wParam);
         switch (wParam) {
         case VK_ESCAPE: PostQuitMessage(0); break;
         case VK_LEFT:   g_keyLeft = 1; break;
@@ -528,7 +555,9 @@ LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
         return 0;
     }
 
-    case WM_KEYUP: {
+    case WM_KEYUP: 
+    {
+        AG_PRINT("Key up %d!", wParam);
         switch (wParam) {
         case VK_LEFT:   g_keyLeft = 0; break;
         case VK_RIGHT:  g_keyRight = 0; break;
@@ -600,21 +629,69 @@ HWND AG_WindowCreate(HINSTANCE hInst, int w, int h, LPWSTR p_caption)
     return hwnd;
 }
 
+#ifdef _DEBUG
+void InitConsole(void)
+{
+    // Try to attach to parent console first; if none, create a new one.
+    if (!AttachConsole(ATTACH_PARENT_PROCESS)) {
+        AllocConsole();
+    }
+
+    // Redirect C stdio to the console using special files.
+    // Use freopen_s if available (MSVC); fallback to freopen otherwise.
+
+#if defined(_MSC_VER)
+    FILE* fp;
+    freopen_s(&fp, "CONIN$", "r", stdin);
+    freopen_s(&fp, "CONOUT$", "w", stdout);
+    freopen_s(&fp, "CONOUT$", "w", stderr);
+#else
+    freopen("CONIN$", "r", stdin);
+    freopen("CONOUT$", "w", stdout);
+    freopen("CONOUT$", "w", stderr);
+#endif
+
+    // Optional: disable buffering so output appears immediately
+    setvbuf(stdout, NULL, _IONBF, 0);
+    setvbuf(stderr, NULL, _IONBF, 0);
+
+    // Optional: if you want wide-character printf (wprintf) to emit UTF-16
+    // uncomment the following lines:
+    // _setmode(_fileno(stdin),  _O_WTEXT);
+    // _setmode(_fileno(stdout), _O_WTEXT);
+    // _setmode(_fileno(stderr), _O_WTEXT);
+}
+#endif
 
 int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, LPWSTR lpCmdLine, int nCmdShow) 
 {
-    HWND hwnd = AG_WindowCreate(hInst, 1024, 768, L"Arcanoid v0.1");
+    int w = 1024;
+    int h = 768;
+
+#ifdef _DEBUG
+    InitConsole();
+#endif
+
+    AG_PRINT("Start Game %d x %d!",  w, h);
+
+    HWND hwnd = AG_WindowCreate(hInst, w, h, L"Arcanoid v0.1");
     if (!hwnd)
     {
+        printf("\nError: failed to create window!");
         return 0;
     }
+    AG_PRINT("Main window was created!");
+
+
     
     // Main Loop
     MSG msg;
-    while (GetMessageW(&msg, NULL, 0, 0) > 0) 
+    AG_PRINT("Start main loop!");
+    while (GetMessageW(&msg, NULL, 0, 0) > 0)
     {
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
+    AG_PRINT("Completed!");
     return 0;
 }
