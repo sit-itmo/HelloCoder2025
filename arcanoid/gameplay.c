@@ -12,6 +12,7 @@ float g_ballX = 0, g_ballY = 0, g_ballVX = 0, g_ballVY = 0, g_ballR = 8;
 int   g_score = 0, g_lives = 3, g_level = 1;
 int  g_running = 0;
 int g_keyLeft = 0, g_keyRight = 0, g_keyA = 0, g_keyD = 0;
+unsigned long g_prev_ticks = 0;
 
 AG_Rect  g_playArea = { 0 };
 static AG_BackBuffer g_AG_RenderBuffer;
@@ -155,7 +156,7 @@ void AG_ClampPaddle(void)
     if (g_paddleX > maxX) g_paddleX = maxX;
 }
 
-void AG_UpdateBall(void)
+void AG_UpdateBall(unsigned long ticks)
 {
     AG_ASSERT(((g_playArea.right - g_playArea.left) * (g_playArea.bottom - g_playArea.top)) > 100);
 
@@ -166,8 +167,14 @@ void AG_UpdateBall(void)
         return;
     }
 
-    float nextX = g_ballX + g_ballVX;
-    float nextY = g_ballY + g_ballVY;
+    if (g_prev_ticks == 0)
+    {
+        g_prev_ticks = ticks;
+    }
+    float nextX = g_ballX + g_ballVX / 20.0f * ((float)(ticks - g_prev_ticks));
+    float nextY = g_ballY + g_ballVY / 20.0f * ((float)(ticks - g_prev_ticks));
+
+    g_prev_ticks = ticks;
 
     if (nextX - g_ballR < g_playArea.left) { nextX = g_playArea.left + g_ballR; g_ballVX = -g_ballVX; }
     if (nextX + g_ballR > g_playArea.right) { nextX = g_playArea.right - g_ballR; g_ballVX = -g_ballVX; }
@@ -245,7 +252,7 @@ void AG_UpdatePaddle(void)
 void AG_GameIteration(unsigned long ticks)
 {
     AG_UpdatePaddle();
-    AG_UpdateBall();
+    AG_UpdateBall(ticks);
 }
 
 
