@@ -125,6 +125,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="gameplay.c" />
+    <ClCompile Include="lnx_frontend.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="misc.c" />
     <ClCompile Include="rendering.c" />
@@ -132,6 +133,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="arcanoid.h" />
+    <ClInclude Include="lnx_frontend.h" />
     <ClInclude Include="win_frontend.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

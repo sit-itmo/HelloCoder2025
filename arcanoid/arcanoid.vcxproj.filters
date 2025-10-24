@@ -6,9 +6,11 @@
     <ClCompile Include="rendering.c" />
     <ClCompile Include="misc.c" />
     <ClCompile Include="win_frontend.c" />
+    <ClCompile Include="lnx_frontend.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="arcanoid.h" />
     <ClInclude Include="win_frontend.h" />
+    <ClInclude Include="lnx_frontend.h" />
   </ItemGroup>
 </Project>

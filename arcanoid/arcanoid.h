@@ -16,7 +16,7 @@ void AG_LogMessage(const char* p_file, int line, enum AG_LOG_KIND kind, const ch
 #if defined(_WIN32) && defined(_DEBUG)
 #define AG_BREAKPOINT()  __debugbreak();
 #elif defined(_DEBUG)
-#define AG_BREAKPOINT()  __debugbreak();
+#define AG_BREAKPOINT()  asm("int $3")
 #else
 #define AG_BREAKPOINT() {}
 #endif
@@ -39,6 +39,10 @@ void AG_LogMessage(const char* p_file, int line, enum AG_LOG_KIND kind, const ch
 #define AG_TRACE(a, ...) { }
 #define AG_ERROR(a, ...) AG_LogMessage(__FILE__, __LINE__, AG_LOG_KIND_ERROR, a, ##__VA_ARGS__)
 #define AG_WARNING(a, ...) { }
+
+#define AG_ASSERT(a) {}
+#define D(a) a
+
 #endif
 
 #ifndef M_PI

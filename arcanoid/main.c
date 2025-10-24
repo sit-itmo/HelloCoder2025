@@ -1,22 +1,23 @@
-#include <windows.h>
 #include <stdio.h>
 #include "arcanoid.h"
+
+#ifdef WIN32
 #include "win_frontend.h"
 
-int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, LPWSTR lpCmdLine, int nCmdShow) 
+int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, LPWSTR lpCmdLine, int nCmdShow)
 {
 #ifdef _DEBUG
     WIN_InitConsole();
 #endif
 
     D(int w = 1024;)
-    D(int h = 768;)
-    D(WCHAR game_name[64] = { 0 };)
+        D(int h = 768;)
+        D(WCHAR game_name[64] = { 0 };)
 
-    _snwprintf(game_name, (sizeof(game_name) / sizeof(game_name[0])),
-        L"Arcanoid v0.1 %S %S", __DATE__, __TIME__);
+        _snwprintf(game_name, (sizeof(game_name) / sizeof(game_name[0])),
+            L"Arcanoid v0.1 %S %S", __DATE__, __TIME__);
 
-    AG_PRINTLN("Start Game %d x %d!",  w, h);
+    AG_PRINTLN("Start Game %d x %d!", w, h);
 
     HWND hwnd = WIN_WindowCreate(w, h, game_name);
     if (!hwnd)
@@ -29,3 +30,27 @@ int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, LPWSTR lpCmdLine, int nC
     AG_PRINTLN("Completed!");
     return 0;
 }
+
+
+#else
+
+#include "lnx_frontend.h"
+
+
+int main()
+{
+    D(int w = 1024;)
+    D(int h = 768;)
+
+    AG_PRINTLN("Starting...");
+
+    LNX_WindowCreate(w, h, "Arcanoid v0.1");
+    AG_PRINTLN("Main window was created!");
+    LNX_MainLoop();
+    AG_PRINTLN("Completed!");
+    return 0;
+}
+#endif
+
+
+
