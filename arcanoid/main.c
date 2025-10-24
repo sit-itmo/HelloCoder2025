@@ -6,21 +6,99 @@
 #include <io.h>
 #include <stdarg.h>
 
+
+enum AG_LOG_KIND
+{
+    AG_LOG_KIND_PRINT, 
+    AG_LOG_KIND_PLINE,
+    AG_LOG_KIND_TRACE,
+    AG_LOG_KIND_ERROR,
+    AG_LOG_KIND_DEBUG,
+    AG_LOG_KIND_WARNI
+};
+
+void AG_LogMessage(const char* p_file, int line, enum AG_LOG_KIND kind, const char* p_text, ...);
+
+
 #ifdef _DEBUG
-#define AG_PRINTLN(a, ...) { printf("\n%d: %lld:" a , __LINE__, __rdtsc(), ##__VA_ARGS__); }
-#define AG_PRINT(a, ...) { printf( a , ##__VA_ARGS__); }
-#define AG_DEBUG(a, ...) { printf("\n%d: " a , __LINE__, ##__VA_ARGS__); }
-#define AG_TRACE(a, ...) { printf("\n%d: " a , __LINE__, ##__VA_ARGS__); }
-#define AG_ERROR(a, ...) { printf("\n%d ------------- ERROR!\n" a , __LINE__, ##__VA_ARGS__); __debugbreak();}
-#define AG_WARNING(a, ...) { printf("\n%d: warning! " a , __LINE__, ##__VA_ARGS__); }
+#define AG_PRINTLN(a, ...) AG_LogMessage(__FILE__, __LINE__, AG_LOG_KIND_PLINE, a, ##__VA_ARGS__)
+#define AG_PRINT(a, ...) AG_LogMessage(__FILE__, __LINE__, AG_LOG_KIND_PRINT, a, ##__VA_ARGS__)
+#define AG_DEBUG(a, ...) AG_LogMessage(__FILE__, __LINE__, AG_LOG_KIND_DEBUG, a, ##__VA_ARGS__)
+#define AG_TRACE(a, ...) AG_LogMessage(__FILE__, __LINE__, AG_LOG_KIND_TRACE, a, ##__VA_ARGS__)
+#define AG_ERROR(a, ...) AG_LogMessage(__FILE__, __LINE__, AG_LOG_KIND_ERROR, a, ##__VA_ARGS__)
+#define AG_WARNING(a, ...) AG_LogMessage(__FILE__, __LINE__, AG_LOG_KIND_WARNI, a, ##__VA_ARGS__)
 #else
 #define AG_PRINTLN(a, ...) {}
 #define AG_PRINT(a, ...) { }
 #define AG_DEBUG(a, ...) { }
 #define AG_TRACE(a, ...) { }
-#define AG_ERROR(a, ...) { }
+#define AG_ERROR(a, ...) AG_LogMessage(__FILE__, __LINE__, AG_LOG_KIND_ERROR, a, ##__VA_ARGS__)
 #define AG_WARNING(a, ...) { }
 #endif
+
+DWORD g_AG_LastPrintTime = 0;
+DWORD g_AG_LastFrame = 0;
+DWORD g_AG_TotalFrames = 0;
+
+int g_AG_TraceEnabled = 0;
+HWND g_AG_TraceMainWindow = NULL;
+
+void AG_LogMessage(const char* p_file, int line, enum AG_LOG_KIND kind, const char* p_fmt, ...)
+{
+    static FILE* p_game_log = NULL;
+    char buf[128] = { 0 };
+    char* p_buf = &buf[0];
+    char* p_buf_end = &buf[127];
+    va_list args;
+    va_start(args, p_fmt);
+
+    *p_buf_end = 0;
+
+    if (g_AG_TraceEnabled == 0 && kind == AG_LOG_KIND_TRACE)
+    {
+        return;
+    }
+
+    if (kind != AG_LOG_KIND_PRINT)
+    {
+        p_buf += snprintf(p_buf, p_buf_end - p_buf, "\n");
+    }
+
+    p_buf += snprintf(p_buf, p_buf_end - p_buf, "%8s:%4d: ", p_file, line);
+    
+    if (kind == AG_LOG_KIND_ERROR)
+    {
+        p_buf += snprintf(p_buf, p_buf_end - p_buf, "----------- ERROR!!!\n");
+    }
+    else if (kind == AG_LOG_KIND_WARNI)
+    {
+        p_buf += snprintf(p_buf, p_buf_end - p_buf, "WARNING");
+    }
+
+    p_buf += vsnprintf(p_buf, p_buf_end - p_buf, p_fmt, args);
+    va_end(args);
+    
+    if (kind == AG_LOG_KIND_ERROR)
+    {
+        p_buf += snprintf(p_buf, p_buf_end - p_buf, "\n");
+    }
+    //if (kind == AG_LOG_KIND_ERROR)
+    //{
+    //    MessageBoxA(g_AG_TraceMainWindow, buf, "ERROR!!!", MB_OK);
+    //}
+    
+    if (p_game_log == NULL)
+    {
+        p_game_log = fopen("game.log", "a+");
+    }
+    if (p_game_log)
+    {
+        fprintf(p_game_log, "%s", buf);
+        fflush(stdout);
+    }
+    printf("%s", buf);
+}
+
 
 #if 0
 void AG_PRINTLN(const char* p_text, ...);
@@ -237,16 +315,17 @@ void AG_StrokeRectPx(AG_BackBuffer* p_renderBuffer, int x0, int y0, int x1, int 
 
 void AG_BufferClear(AG_BackBuffer* p_renderBuffer, AG_Color color)
 {
-    if (p_renderBuffer == NULL)
-    {
-        return;
-    }
-    color.A = 0xFF;
-    int count = p_renderBuffer->Width * p_renderBuffer->Height;
-    for (int i = 0; i < count; ++i)
-    {
-        p_renderBuffer->pPixels[i].ARGB = color.ARGB;
-    }
+    memset(p_renderBuffer->pPixels, 0, p_renderBuffer->Width * p_renderBuffer->Height * sizeof(p_renderBuffer->pPixels[0]));
+    //if (p_renderBuffer == NULL)
+    //{
+    //    return;
+    //}
+    //color.A = 0xFF;
+    //int count = p_renderBuffer->Width * p_renderBuffer->Height;
+    //for (int i = 0; i < count; ++i)
+    //{
+    //    p_renderBuffer->pPixels[i].ARGB = color.ARGB;
+    //}
 }
 
 
@@ -480,6 +559,46 @@ void AG_Tick(void)
     AG_UpdateBall();
 }
 
+
+void AG_Iteration(HWND hwnd)
+{
+    DWORD cur_time = GetTickCount();
+
+    if (g_AG_LastPrintTime == 0)
+    {
+        g_AG_LastPrintTime = cur_time;
+    }
+
+    if ((cur_time - g_AG_LastPrintTime) > 1000)
+    {
+        WCHAR game_name[64] = { 0 };
+
+        float fps = (float)(g_AG_TotalFrames - g_AG_LastFrame) / ((float)(cur_time - g_AG_LastPrintTime) / 1000.0f);
+
+        _snwprintf(game_name, (sizeof(game_name) / sizeof(game_name[0])),
+            L"Arcanoid v0.1 %S %S FPS=%.3f", __DATE__, __TIME__, fps);
+
+        SetWindowTextW(hwnd, game_name);
+
+        g_AG_LastFrame = g_AG_TotalFrames;
+        g_AG_LastPrintTime = cur_time;
+    }
+    
+    g_AG_TotalFrames++;
+
+    AG_Tick();
+
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+    if (g_AG_RenderBuffer.hDC && g_AG_RenderBuffer.hBitmap)
+    {
+        AG_DrawWorld();
+        BitBlt(hdc, 0, 0, g_AG_RenderBuffer.Width, g_AG_RenderBuffer.Height,
+            g_AG_RenderBuffer.hDC, 0, 0, SRCCOPY);
+    }
+    EndPaint(hwnd, &ps);
+}
+
 static UINT_PTR g_timerId = 0;
 
 LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) 
@@ -496,7 +615,7 @@ LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
         AG_ResetBall(1); 
 
         // 60 FPS
-        g_timerId = SetTimer(hwnd, 1, 16, NULL);
+        //g_timerId = SetTimer(hwnd, 1, 16, NULL);
         return 0;
     }
 
@@ -516,19 +635,19 @@ LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
         return 0;
     }
 
-    case WM_TIMER: {
-        if (wParam == g_timerId) 
-        {
-            AG_Tick();
-            InvalidateRect(hwnd, NULL, FALSE);
-        }
-        return 0;
-    }
+    //case WM_TIMER: {
+    //    if (wParam == g_timerId) 
+    //    {
+    //        InvalidateRect(hwnd, NULL, FALSE);
+    //    }
+    //    return 0;
+    //}
 
     case WM_LBUTTONDOWN: 
     {
         int x = GET_X_LPARAM(lParam);
         int y = GET_Y_LPARAM(lParam);
+        AG_TRACE("Mouse down (%d, %d)", x, y);
         SetCapture(hwnd);
         InvalidateRect(hwnd, NULL, FALSE);
         return 0;
@@ -538,6 +657,7 @@ LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
     {
         int x = GET_X_LPARAM(lParam);
         int y = GET_Y_LPARAM(lParam);
+        AG_TRACE("Mouse move (%d, %d)", x, y);
         InvalidateRect(hwnd, NULL, FALSE);
         return 0;
     }
@@ -546,6 +666,7 @@ LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
     {
         int x = GET_X_LPARAM(lParam);
         int y = GET_Y_LPARAM(lParam);
+        AG_TRACE("Mouse up (%d, %d)", x, y);
         ReleaseCapture();
         InvalidateRect(hwnd, NULL, FALSE);
         return 0;
@@ -562,6 +683,7 @@ LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
         case 'D': case 'd': g_keyD = 1; break;
         case VK_SPACE:  g_running = !g_running; break;
         case 'R': case 'r': AG_NewGame(); break;
+        case 'T': case 't': g_AG_TraceEnabled = !g_AG_TraceEnabled; break;
         }
         return 0;
     }
@@ -580,20 +702,12 @@ LRESULT CALLBACK AG_WindowWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPa
 
     case WM_PAINT: 
     {
-        PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-        if (g_AG_RenderBuffer.hDC && g_AG_RenderBuffer.hBitmap) 
-        {
-            AG_DrawWorld();
-            BitBlt(hdc, 0, 0, g_AG_RenderBuffer.Width, g_AG_RenderBuffer.Height, 
-                g_AG_RenderBuffer.hDC, 0, 0, SRCCOPY);
-        }
-        EndPaint(hwnd, &ps);
+        AG_Iteration(hwnd);
         return 0;
     }
 
     case WM_DESTROY:
-        if (g_timerId) { KillTimer(hwnd, g_timerId); g_timerId = 0; }
+        //if (g_timerId) { KillTimer(hwnd, g_timerId); g_timerId = 0; }
         AG_BackbufferDestroy(&g_AG_RenderBuffer);
         PostQuitMessage(0);
         return 0;
@@ -678,31 +792,53 @@ int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, LPWSTR lpCmdLine, int nC
 {
     int w = 1024;
     int h = 768;
+    WCHAR game_name[64] = { 0 };
 
+    _snwprintf(game_name, (sizeof(game_name) / sizeof(game_name[0])),
+        L"Arcanoid v0.1 %S %S", __DATE__, __TIME__);
 #ifdef _DEBUG
     InitConsole();
 #endif
 
-
     AG_PRINTLN("Start Game %d x %d!",  w, h);
 
-    HWND hwnd = AG_WindowCreate(hInst, w, h, L"Arcanoid v0.1");
+    HWND hwnd = AG_WindowCreate(hInst, w, h, game_name);
     if (!hwnd)
     {
         AG_PRINTLN("\nError: failed to create window!");
         return 0;
     }
+    g_AG_TraceMainWindow = hwnd;
     AG_PRINTLN("Main window was created!");
 
 
     
     // Main Loop
     MSG msg;
+    BOOL running = TRUE;
+
     AG_PRINTLN("Start main loop!");
-    while (GetMessageW(&msg, NULL, 0, 0) > 0)
+    while (running)
     {
-        TranslateMessage(&msg);
-        DispatchMessageW(&msg);
+        // Process all pending messages
+        while (PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            if (msg.message == WM_QUIT)
+            {
+                running = FALSE;
+                break;
+            }
+
+            TranslateMessage(&msg);
+            DispatchMessageW(&msg);
+        }
+
+        // If no messages are left in the queue, trigger your redraw
+        if (running)
+        {
+            InvalidateRect(hwnd, NULL, FALSE);
+            UpdateWindow(hwnd); // optional, to force immediate repaint
+        }
     }
     AG_PRINTLN("Completed!");
     return 0;
