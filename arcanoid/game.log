@@ -640,3 +640,29 @@ D:\HelloCoder2025\arcanoid\main.c: 692: Key up 37!
 D:\HelloCoder2025\arcanoid\main.c: 676: Key down 39!
 D:\HelloCoder2025\arcanoid\main.c: 692: Key up 39!
 D:\HelloCoder2025\arcanoid\main.c: 842: Completed!
+D:\HelloCoder2025\arcanoid\main.c:  18: Start Game 1024 x 768!
+D:\HelloCoder2025\arcanoid\main.c:  26: Main window was created!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 334: Start main loop!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 208: Key down 32!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 223: Key up 32!
+D:\HelloCoder2025\arcanoid\gameplay.c: 209: WARNINGHIT the block 7 x 8!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 208: Key down 39!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 223: Key up 39!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 208: Key down 32!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 223: Key up 32!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 208: Key down 37!
+D:\HelloCoder2025\arcanoid\gameplay.c: 209: WARNINGHIT the block 11 x 8!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 223: Key up 37!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 208: Key down 39!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 223: Key up 39!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 208: Key down 32!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 223: Key up 32!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 208: Key down 37!
+D:\HelloCoder2025\arcanoid\gameplay.c: 209: WARNINGHIT the block 11 x 7!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 223: Key up 37!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 208: Key down 39!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 223: Key up 39!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 208: Key down 37!
+D:\HelloCoder2025\arcanoid\win_frontend.c: 223: Key up 37!
+D:\HelloCoder2025\arcanoid\gameplay.c: 209: WARNINGHIT the block 9 x 8!
+D:\HelloCoder2025\arcanoid\main.c:  28: Completed!

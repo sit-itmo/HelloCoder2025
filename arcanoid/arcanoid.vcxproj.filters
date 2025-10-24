@@ -2,5 +2,13 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.c" />
+    <ClCompile Include="gameplay.c" />
+    <ClCompile Include="rendering.c" />
+    <ClCompile Include="misc.c" />
+    <ClCompile Include="win_frontend.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="arcanoid.h" />
+    <ClInclude Include="win_frontend.h" />
   </ItemGroup>
 </Project>
