@@ -30,7 +30,7 @@ void AG_LogMessage(const char* p_file, int line, enum AG_LOG_KIND kind, const ch
 #define AG_WARNING(a, ...) AG_LogMessage(__FILE__, __LINE__, AG_LOG_KIND_WARNI, a, ##__VA_ARGS__)
 
 #define AG_ASSERT(a) if (!(a)) { AG_ERROR(#a); }
-#define D(a) AG_PRINTLN(#a) a
+#define D(a) AG_PRINTLN(#a); a
 
 #else
 #define AG_PRINTLN(a, ...) {}

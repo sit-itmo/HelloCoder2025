@@ -5,15 +5,16 @@
 
 int APIENTRY wWinMain(HINSTANCE hInst, HINSTANCE hPrev, LPWSTR lpCmdLine, int nCmdShow) 
 {
-    int w = 1024;
-    int h = 768;
-    WCHAR game_name[64] = { 0 };
-
-    _snwprintf(game_name, (sizeof(game_name) / sizeof(game_name[0])),
-        L"Arcanoid v0.1 %S %S", __DATE__, __TIME__);
 #ifdef _DEBUG
     WIN_InitConsole();
 #endif
+
+    D(int w = 1024;)
+    D(int h = 768;)
+    D(WCHAR game_name[64] = { 0 };)
+
+    _snwprintf(game_name, (sizeof(game_name) / sizeof(game_name[0])),
+        L"Arcanoid v0.1 %S %S", __DATE__, __TIME__);
 
     AG_PRINTLN("Start Game %d x %d!",  w, h);
 
