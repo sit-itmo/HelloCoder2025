@@ -1,4 +1,4 @@
-
+#if !defined (WIN32)
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -157,3 +157,4 @@ void LNX_MainLoop(void)
     XCloseDisplay(g_LNX_RenderBuffer.dpy);
     return 0;
 }
+#endif
