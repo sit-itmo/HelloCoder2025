@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <windows.h>
+#include "buf.h"
+
+//Buf ddd;
 
 #ifdef __cplusplus
 void do_magic(const char* p_txt)

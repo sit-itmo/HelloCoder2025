@@ -1,202 +1,154 @@
 #include <stdio.h>
+#include <string.h>
+#include <malloc.h>
 
+#include <string>
+
+#include "buf.h"
+
+void Test0Arg(Buf&& b1)
+{
+    b1.Print();
+}
+void Test1Arg(Buf b1)
+{
+    b1.Print();
+}
+
+void Test2Arg(Buf* b1)
+{
+    b1->Print();
+}
+
+void Test3Arg(Buf& b1)
+{
+    b1.Print();
+}
+
+Buf Test1Ret(unsigned long size, int v)
+{
+    Buf b{size, v};
+    b.Print();
+    return b;
+}
+
+Buf *Test2Ret(unsigned long size, int v)
+{
+    Buf b{ size, v };
+    return &b;
+}
+
+Buf& Test3Ret(unsigned long size, int v)
+{
+    Buf b{ size, v };
+    return b;
+}
+
+std::string TestStr(const char* p_name)
+{
+    std::string y = p_name;
+    y = "[" + y + "]";
+    return y;
+}
+
+
+int main()
+{
+    Buf big{100, 11};
+    Buf b00;
+    Buf b0;
+    b0 = Test1Ret(20, 0xAA);
+    b0.Print();
+    b0 = b00;
+    b0.Print();
+    
+    b0 = (Buf&&)(big);
+    b0.Print();
+    b00 = (Buf&&)(big);
+    b00.Print();
+
+    std::string bbb;
+    bbb = TestStr("Hello");
+    //b0.pData = "asdasdas";
+
+    Buf b1;
+    Buf b2(10, 0xAA);
+    //Buf b3 = { 10, 0xBB };
+    //Buf b4{10, 0xDD };
+    Buf bcc = Test1Ret(20, 0xAA);
+    bcc.Print();
+
+    bcc = Test1Ret(20, 0xAA);
+    bcc.Print();
+
+    Test1Arg(Test1Ret(20, 0xAA));
+    Test0Arg(Test1Ret(20, 0xAA));
+
+    //std::move();
+
+    //b1.Print();
+    //b2.Print();
+    //b3.Print();
+    //b4.Print();
+
+
+    //Test1Arg(b2);
+    //Test2Arg(&b2);
+    //Test3Arg(b2);
+
+    //Test2Arg(&Test1Ret(20, 0xAA)); // bad ptr on temp obj
+    //Test3Arg(Test1Ret(20, 0xAA)); // Error ref to r-value
+
+
+    {
+        Buf b5 = b2;
+        b5.Print();
+    }
+
+
+
+    return 0;
+}
 
 struct S
 {
     int x;
-    //S();
-    //S(const S&);
-    //~S();
-    //S operator=(const S&);
 
-    //S operator=(const S&&);
-    //S(const S&&);
+    int operator&(const char* p_str)
+    {
+        return x + strlen(p_str);
+    }
 };
 
 
-struct Vector3D
+S test2()
 {
-    float X, Y, Z;
+    S x;
+    x.x = 10;
+    return x;
+}
 
-    int Sum();
-    int Sum(int);
-
-    void Printer() 
-    {
-        printf("\n0x%08x:Vector3D(%f, %f, %f)", this, X, Y, Z);
-    }
-
-    //Vector3D &other
-    //Vector3D *other
-
-    Vector3D operator=(const Vector3D& other)
-    {
-        X = other.X;
-        Y = other.Y;
-        Z = other.Z;
-        return *this;
-    }
-
-
-    Vector3D(const Vector3D &other) 
-    {
-        X = other.X;
-        Y = other.Y;
-        Z = other.Z;
-        printf("\n0x%08x:Vector3D[Vector3D(other)]", this); 
-    }
-
-    Vector3D() { printf("\n0x%08x:Vector3D[Vector3D()]", this); }
-    Vector3D(float x, float y, float z);
-    Vector3D(const char* p_tag) { printf("Tag: %s", p_tag); }
-    ~Vector3D() { printf("\n0x%08x:~Vector3D[DESTRUCTOR]", this); }
+int main_test1()
+{
+    //r-value
+    //l-value
     
-};
+    //l-value = r-value
 
-Vector3D::Vector3D(float x, float y, float z)
-{
-    printf("\n0x%08x:Vector3D[Vector3D(x,y,z)]", this);
-    X = x;
-    Y = y;
-    Z = z;
-}
+    int x = 10;
+    int&& ref10 = 10;
 
-int Vector3D::Sum(int u)
-{
-    return (X + Y + Z) * u;
-}
-
-int Vector3D::Sum()
-{
-    int X = 10;
-    //this ===> Vector3D*
-    return this->X + Y + this->Z;
-}
-
-int TestArg(Vector3D vec)
-{
-    vec.Printer();
-    vec.X += 1000;
-    vec.Printer();
-    return 0;
-}
-
-int TestArgRef(Vector3D &vec)
-{
-    vec.Printer();
-    vec.X += 1000;
-    vec.Printer();
-    return 0;
-}
-
-int TestArgPtr(Vector3D* vec)
-{
-    vec->Printer();
-    vec->X += 1000;
-    vec->Printer();
-    return 0;
-}
-
-int main(int argc, char* argv[])
-{
-    Vector3D vv1 = {1, 2, 3};
-    Vector3D vv2 = vv1;
-    Vector3D vv3;
-    vv1.X += 10;
-    vv1.Y += 10;
-    vv1.Z += 10;
-
-    vv3 = vv2 = vv1;
-
-    Vector3D v1 = { 10, 10, 10 };
-    Vector3D v2 = { 20, 20, 20 };
-    Vector3D& rv = v1;
-    Vector3D* pv = &rv;
-
-    v1.Printer();
-    TestArg(v1);
-    v1.Printer();
-
-    TestArgRef(v1);
-    v1.Printer();
-
-    //TestArgRef(10);
-    v1.Printer();
-
-    //other++;
-
-    Vector3D *other = &v1;
-    other->X += 10;
-    (*other).X += 10;
+    S s = test2();
     
-    Vector3D &other_ref = v1;
+    S& s_ref = s;
+    S* s_ptr = &s;
 
-    (*other).X += 10;
-    other_ref.X += 10;
-    
-    (*other) = v2;
-    other_ref = v2;
-
-    rv = v2;
-    
-    v1.~Vector3D();
-
-    int x = 42, y = 13;
-    int& ref = x; // ссылка на x
-    ref += 100;
-    ref = y;
-    ref += 100;
-
-    v1.Printer();
-    TestArg(v1);
-    v1.Printer();
-
-    TestArgRef(v1);
-    v1.Printer();
-
-    //TestArgRef(10);
-    v1.Printer();
-
-
-
-
-#if 0
-    register int x = 10;
-    Vector3D v2 = { "Hello!" };
-    SumTest((int)0xFFFFFFFFFFULL, 0xFFFFFFFFFFULL);
-    SumTest(55.6f, 57.4f);
-    SumTest(10, 11);
-
-    Test_c(1);
-
-    v1.X = 10;
-    v1.Y = 10;
-    v1.Z = 10;
-
-    float f = v1.Sum(10);
-    {
-        Vector3D v2;
-        v2.X = 20;
-        v2.Y = 20;
-        v2.Z = 20;
-        float f = v2.Sum();
-
-    }
-#endif
+    int y1 = s & "Hello!";
+    int y2 = s_ref & "Hello!";
+    int y3 = *s_ptr & "Hello!";
 
     return 0;
 }
 
-extern "C" void Test_c(int);
 
-extern "C" int SumTest(int x, int y)
-{
-    printf("[%d + %d = %d]", x, y, x + y);
-    return x + y;
-}
 
-float SumTest(float x, float y)
-{
-    printf("[%f + %f = %f]", x, y, x + y);
-    return x + y;
-}

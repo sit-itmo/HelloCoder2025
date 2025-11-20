@@ -2,7 +2,12 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="cpp_experiments_0_basic.cpp" />
-    <ClCompile Include="cpp_experiments.cpp" />
+    <ClCompile Include="cpp_experiments_1.cpp" />
     <ClCompile Include="test_c.c" />
+    <ClCompile Include="cpp_experiments.cpp" />
+    <ClCompile Include="buf.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="buf.h" />
   </ItemGroup>
 </Project>
