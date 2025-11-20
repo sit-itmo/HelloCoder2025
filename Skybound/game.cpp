@@ -7,17 +7,19 @@ const int SCREEN_W = 800;
 const int SCREEN_H = 600;
 
 const int TILE_SIZE = 32;
-const int LEVEL_W = 25;
+
+// Сделаем уровень пошире, чтобы был смысл в прокрутке
+const int LEVEL_W = 100;
 const int LEVEL_H = 18;
 
 const float GRAVITY = 900.0f;  // пикселей/сек^2
-const float MOVE_SPEED = 200.0f; // пикселей/сек
+const float MOVE_SPEED = 200.0f;  // пикселей/сек
 const float JUMP_SPEED = -450.0f;
 
 HWND g_hWnd = NULL;
 bool g_running = true;
 
-// буфер кадра (ARGB, но используем как 32-битный int)
+// буфер кадра (ARGB)
 unsigned int* g_pixels = 0;
 BITMAPINFO g_bmi;
 
@@ -27,10 +29,45 @@ struct Player
     float y;
     float vx;
     float vy;
-    bool onGround;
+    bool  onGround;
+};
+
+struct Enemy
+{
+    float x;
+    float y;
+    float vx;
+    float vy;
+    bool  alive;
+};
+
+struct Bullet
+{
+    float x;
+    float y;
+    float vx;
+    bool  active;
 };
 
 Player g_player;
+float  g_camX = 0.0f;    // камера по X
+int    g_playerDir = 1;  // направление игрока: 1 вправо, -1 влево
+
+// Тайлы:
+// 0 - пусто
+// 1 - земля (твёрдый)
+// 2 - шипы (убивают)
+// 3 - декор (не твёрдый)
+int g_level[LEVEL_H][LEVEL_W];
+
+// Враги и пули
+const int MAX_ENEMIES = 16;
+Enemy g_enemies[MAX_ENEMIES];
+int   g_enemyCount = 0;
+
+const int MAX_BULLETS = 64;
+Bullet g_bullets[MAX_BULLETS];
+float  g_shootCooldown = 0.0f; // таймер перезарядки
 
 // Утилита: цвет (r,g,b) -> 0x00BBGGRR для DIB
 unsigned int MakeColor(unsigned char r, unsigned char g, unsigned char b)
@@ -53,45 +90,173 @@ void ClearScreen(unsigned int color)
         g_pixels[i] = color;
 }
 
-// Простой уровень: 0 - пусто, 1 - платформа
-int g_level[LEVEL_H][LEVEL_W] =
+// Инициализация уровня
+void BuildLevel()
 {
-    // 0..24 (25 столбцов)
-    // Верхние строки пустые
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    // Всё пустое
+    for (int y = 0; y < LEVEL_H; ++y)
+    {
+        for (int x = 0; x < LEVEL_W; ++x)
+        {
+            g_level[y][x] = 0;
+        }
+    }
 
-    // Пара висящих платформ
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    // Нижние 4 строки — земля
+    for (int y = LEVEL_H - 4; y < LEVEL_H; ++y)
+    {
+        for (int x = 0; x < LEVEL_W; ++x)
+        {
+            g_level[y][x] = 1;
+        }
+    }
 
-    // ещё пару строк пустых
-    {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+    // Пара "островков" платформ
+    for (int x = 10; x < 15; ++x) g_level[12][x] = 1;
+    for (int x = 25; x < 30; ++x) g_level[10][x] = 1;
+    for (int x = 40; x < 46; ++x) g_level[8][x] = 1;
+    for (int x = 60; x < 70; ++x) g_level[11][x] = 1;
+    for (int x = 80; x < 90; ++x) g_level[9][x] = 1;
 
-    // Низ — сплошная платформа
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-    {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1},
-};
+    // Шипы (ряд на полу и на одной из платформ)
+    for (int x = 20; x < 30; ++x) g_level[LEVEL_H - 5][x] = 2;
+    for (int x = 42; x < 45; ++x) g_level[7][x] = 2;
 
-// Проверка, является ли тайл твёрдым
-bool IsSolid(int tx, int ty)
-{
-    if (tx < 0 || tx >= LEVEL_W || ty < 0 || ty >= LEVEL_H) return false;
-    return g_level[ty][tx] != 0;
+    // Декор (просто зелёные блоки)
+    for (int x = 5; x < 10; ++x) g_level[LEVEL_H - 5][x] = 3;
+    for (int x = 50; x < 55; ++x) g_level[13][x] = 3;
 }
 
-// Рисуем прямоугольник в тайловых координатах
+// 0 - пусто
+// 1 - земля (твёрдый)
+// 2 - шипы
+// 3 - декор
+
+void ClearLevel()
+{
+    for (int y = 0; y < LEVEL_H; ++y)
+        for (int x = 0; x < LEVEL_W; ++x)
+            g_level[y][x] = 0;
+}
+
+// ===== Уровень 1: базовый, похож на предыдущий =====
+void BuildLevel_1()
+{
+    ClearLevel();
+
+    // Низ — земля (4 строки)
+    for (int y = LEVEL_H - 4; y < LEVEL_H; ++y)
+        for (int x = 0; x < LEVEL_W; ++x)
+            g_level[y][x] = 1;
+
+    // Плавающие платформы
+    for (int x = 10; x < 15; ++x) g_level[12][x] = 1;
+    for (int x = 25; x < 30; ++x) g_level[10][x] = 1;
+    for (int x = 40; x < 46; ++x) g_level[8][x] = 1;
+    for (int x = 60; x < 70; ++x) g_level[11][x] = 1;
+    for (int x = 80; x < 90; ++x) g_level[9][x] = 1;
+
+    // Шипы
+    for (int x = 20; x < 30; ++x) g_level[LEVEL_H - 5][x] = 2;
+    for (int x = 42; x < 45; ++x) g_level[7][x] = 2;
+
+    // Декор
+    for (int x = 5; x < 10; ++x) g_level[LEVEL_H - 5][x] = 3;
+    for (int x = 50; x < 55; ++x) g_level[13][x] = 3;
+}
+
+// ===== Уровень 2: «пещера» с туннелем и ловушками =====
+void BuildLevel_2()
+{
+    ClearLevel();
+
+    // Весь низ — земля
+    for (int y = LEVEL_H - 3; y < LEVEL_H; ++y)
+        for (int x = 0; x < LEVEL_W; ++x)
+            g_level[y][x] = 1;
+
+    // «потолок» вверху
+    for (int x = 0; x < LEVEL_W; ++x)
+        g_level[2][x] = 1;
+
+    // Столбы, образующие туннели
+    for (int y = 3; y < LEVEL_H - 3; ++y)
+    {
+        if (y % 4 == 0)
+        {
+            // стены
+            g_level[y][15] = 1;
+            g_level[y][35] = 1;
+            g_level[y][55] = 1;
+            g_level[y][75] = 1;
+        }
+    }
+
+    // Ямы с шипами в полу
+    for (int x = 8; x < 12; ++x) g_level[LEVEL_H - 3][x] = 0;
+    for (int x = 8; x < 12; ++x) g_level[LEVEL_H - 4][x] = 2;
+
+    for (int x = 30; x < 34; ++x) g_level[LEVEL_H - 3][x] = 0;
+    for (int x = 30; x < 34; ++x) g_level[LEVEL_H - 4][x] = 2;
+
+    for (int x = 60; x < 64; ++x) g_level[LEVEL_H - 3][x] = 0;
+    for (int x = 60; x < 64; ++x) g_level[LEVEL_H - 4][x] = 2;
+
+    // Немного декора на «потолке»
+    for (int x = 5; x < 10; ++x) g_level[3][x] = 3;
+    for (int x = 40; x < 45; ++x) g_level[3][x] = 3;
+    for (int x = 70; x < 75; ++x) g_level[3][x] = 3;
+}
+
+// ===== Уровень 3: серия ступенек с шипами снизу =====
+void BuildLevel_3()
+{
+    ClearLevel();
+
+    // По диагонали поднимающиеся платформы
+    int baseY = LEVEL_H - 4;
+    for (int step = 0; step < 10; ++step)
+    {
+        int y = baseY - step;   // каждая ступень выше
+        int xStart = 5 + step * 6;
+        int xEnd = xStart + 5;
+        if (y < 0) break;
+
+        for (int x = xStart; x <= xEnd && x < LEVEL_W; ++x)
+            g_level[y][x] = 1;
+    }
+
+    // Сплошные шипы в самом низу (наказание за падение)
+    for (int x = 0; x < LEVEL_W; ++x)
+        g_level[LEVEL_H - 1][x] = 2;
+
+    // Немного земли в самом начале и в конце, чтобы было где стоять
+    for (int x = 0; x < 8; ++x)
+        g_level[LEVEL_H - 2][x] = 1;
+    for (int x = LEVEL_W - 8; x < LEVEL_W; ++x)
+        g_level[LEVEL_H - 2][x] = 1;
+
+    // Декор на заднем плане
+    for (int x = 15; x < 20; ++x) g_level[LEVEL_H - 6][x] = 3;
+    for (int x = 40; x < 45; ++x) g_level[LEVEL_H - 8][x] = 3;
+    for (int x = 70; x < 75; ++x) g_level[LEVEL_H - 10][x] = 3;
+}
+
+// Получение значения тайла
+int GetTile(int tx, int ty)
+{
+    if (tx < 0 || tx >= LEVEL_W || ty < 0 || ty >= LEVEL_H) return 0;
+    return g_level[ty][tx];
+}
+
+// Является ли тайл твёрдым
+bool IsSolid(int tx, int ty)
+{
+    int t = GetTile(tx, ty);
+    return (t == 1); // земля
+}
+
+// Рисуем прямоугольник в экранных координатах
 void DrawTileRect(int x0, int y0, int w, int h, unsigned int color)
 {
     for (int y = y0; y < y0 + h; ++y)
@@ -103,42 +268,150 @@ void DrawTileRect(int x0, int y0, int w, int h, unsigned int color)
     }
 }
 
-// Отрисовка уровня
+// Отрисовка уровня с учётом камеры
 void DrawLevel()
 {
-    unsigned int tileColor = MakeColor(100, 100, 255); // синий
+    unsigned int colGround = MakeColor(100, 100, 255); // синий
+    unsigned int colSpike = MakeColor(255, 50, 50);   // красный
+    unsigned int colDecor = MakeColor(50, 200, 50);   // зелёный
+
     for (int ty = 0; ty < LEVEL_H; ++ty)
     {
         for (int tx = 0; tx < LEVEL_W; ++tx)
         {
-            if (g_level[ty][tx] != 0)
+            int tile = g_level[ty][tx];
+            if (tile == 0) continue;
+
+            int worldX = tx * TILE_SIZE;
+            int worldY = ty * TILE_SIZE;
+            int sx = worldX - (int)g_camX;
+            int sy = worldY; // по Y камера не двигается
+
+            // если совсем вне экрана — пропускаем
+            if (sx + TILE_SIZE < 0 || sx >= SCREEN_W) continue;
+            if (sy + TILE_SIZE < 0 || sy >= SCREEN_H) continue;
+
+            unsigned int col = colGround;
+            if (tile == 2) col = colSpike;
+            if (tile == 3) col = colDecor;
+
+            DrawTileRect(sx, sy, TILE_SIZE, TILE_SIZE, col);
+        }
+    }
+}
+
+// Отрисовка игрока
+void DrawPlayer()
+{
+    const int pw = 24;
+    const int ph = 32;
+    unsigned int col = MakeColor(255, 200, 50); // жёлто-оранжевый
+
+    int sx = (int)g_player.x - (int)g_camX;
+    int sy = (int)g_player.y;
+
+    DrawTileRect(sx, sy, pw, ph, col);
+}
+
+// Враги
+void DrawEnemies()
+{
+    const int ew = 24;
+    const int eh = 32;
+    unsigned int col = MakeColor(200, 50, 255); // фиолетовый
+
+    for (int i = 0; i < g_enemyCount; ++i)
+    {
+        if (!g_enemies[i].alive) continue;
+
+        int sx = (int)g_enemies[i].x - (int)g_camX;
+        int sy = (int)g_enemies[i].y;
+
+        if (sx + ew < 0 || sx >= SCREEN_W) continue;
+        if (sy + eh < 0 || sy >= SCREEN_H) continue;
+
+        DrawTileRect(sx, sy, ew, eh, col);
+    }
+}
+
+// Пули
+void DrawBullets()
+{
+    const int bw = 8;
+    const int bh = 4;
+    unsigned int col = MakeColor(255, 255, 255); // белый
+
+    for (int i = 0; i < MAX_BULLETS; ++i)
+    {
+        if (!g_bullets[i].active) continue;
+
+        int sx = (int)g_bullets[i].x - (int)g_camX;
+        int sy = (int)g_bullets[i].y;
+
+        if (sx + bw < 0 || sx >= SCREEN_W) continue;
+        if (sy + bh < 0 || sy >= SCREEN_H) continue;
+
+        DrawTileRect(sx, sy, bw, bh, col);
+    }
+}
+
+// Прямоугольники пересекаются?
+bool RectsOverlap(float x1, float y1, int w1, int h1,
+    float x2, float y2, int w2, int h2)
+{
+    if (x1 > x2 + w2) return false;
+    if (x2 > x1 + w1) return false;
+    if (y1 > y2 + h2) return false;
+    if (y2 > y1 + h1) return false;
+    return true;
+}
+
+// Сброс игрока при смерти
+void ResetPlayer()
+{
+    g_player.x = 50.0f;
+    g_player.y = 100.0f;
+    g_player.vx = 0.0f;
+    g_player.vy = 0.0f;
+    g_player.onGround = false;
+    g_camX = 0.0f;
+}
+
+// Проверка, стоим ли на шипах / внутри шипов
+void CheckPlayerHazards()
+{
+    const int pw = 24;
+    const int ph = 32;
+
+    int left = (int)g_player.x;
+    int right = (int)g_player.x + pw - 1;
+    int top = (int)g_player.y;
+    int bottom = (int)g_player.y + ph - 1;
+
+    int tx0 = left / TILE_SIZE;
+    int tx1 = right / TILE_SIZE;
+    int ty0 = top / TILE_SIZE;
+    int ty1 = bottom / TILE_SIZE;
+
+    for (int ty = ty0; ty <= ty1; ++ty)
+    {
+        for (int tx = tx0; tx <= tx1; ++tx)
+        {
+            int tile = GetTile(tx, ty);
+            if (tile == 2) // шипы
             {
-                int x = tx * TILE_SIZE;
-                int y = ty * TILE_SIZE;
-                DrawTileRect(x, y, TILE_SIZE, TILE_SIZE, tileColor);
+                ResetPlayer();
+                return;
             }
         }
     }
 }
 
-// Отрисовка игрока (прямоугольник)
-void DrawPlayer()
-{
-    int pw = 24;
-    int ph = 32;
-    unsigned int col = MakeColor(255, 200, 50); // жёлто-оранжевый
-
-    int x0 = (int)g_player.x;
-    int y0 = (int)g_player.y;
-
-    DrawTileRect(x0, y0, pw, ph, col);
-}
-
-// Простая обработка столкновений по осям
+// Движение и коллизии игрока
 void MovePlayer(float dt)
 {
-    int pw = 24;
-    int ph = 32;
+    const int pw = 24;
+    const int ph = 32;
 
     // Обработка ввода
     g_player.vx = 0.0f;
@@ -146,10 +419,12 @@ void MovePlayer(float dt)
     if (GetAsyncKeyState(VK_LEFT) & 0x8000)
     {
         g_player.vx = -MOVE_SPEED;
+        g_playerDir = -1;
     }
     if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
     {
         g_player.vx = MOVE_SPEED;
+        g_playerDir = 1;
     }
 
     // Прыжок
@@ -166,7 +441,6 @@ void MovePlayer(float dt)
     float newX = g_player.x + g_player.vx * dt;
     float newY = g_player.y;
 
-    // Горизонтальные столкновения
     if (g_player.vx > 0) // вправо
     {
         int txRight = (int)((newX + pw - 1) / TILE_SIZE);
@@ -185,7 +459,7 @@ void MovePlayer(float dt)
 
         if (collide)
         {
-            newX = txRight * TILE_SIZE - pw; // упираемся в блок
+            newX = txRight * TILE_SIZE - pw;
             g_player.vx = 0;
         }
     }
@@ -207,7 +481,7 @@ void MovePlayer(float dt)
 
         if (collide)
         {
-            newX = (txLeft + 1) * TILE_SIZE; // упираемся
+            newX = (txLeft + 1) * TILE_SIZE;
             g_player.vx = 0;
         }
     }
@@ -266,15 +540,278 @@ void MovePlayer(float dt)
 
     g_player.y = newY;
 
-    // Простейшие границы экрана
-    if (g_player.x < 0) g_player.x = 0;
-    if (g_player.x + pw >= SCREEN_W) g_player.x = (float)(SCREEN_W - pw);
+    // Простейшие вертикальные границы экрана
     if (g_player.y + ph >= SCREEN_H)
     {
         g_player.y = (float)(SCREEN_H - ph);
         g_player.vy = 0;
         g_player.onGround = true;
     }
+
+    // Проверка шипов
+    CheckPlayerHazards();
+}
+
+// Движение одного врага (гравитация + простые коллизии)
+void MoveEnemy(Enemy& e, float dt)
+{
+    if (!e.alive) return;
+
+    const int ew = 24;
+    const int eh = 32;
+
+    // гравитация
+    e.vy += GRAVITY * dt;
+
+    // движение по X
+    float newX = e.x + e.vx * dt;
+    float newY = e.y;
+
+    if (e.vx > 0) // вправо
+    {
+        int txRight = (int)((newX + ew - 1) / TILE_SIZE);
+        int tyTop = (int)(newY / TILE_SIZE);
+        int tyBottom = (int)((newY + eh - 1) / TILE_SIZE);
+
+        bool collide = false;
+        for (int ty = tyTop; ty <= tyBottom; ++ty)
+        {
+            if (IsSolid(txRight, ty))
+            {
+                collide = true;
+                break;
+            }
+        }
+
+        if (collide)
+        {
+            newX = txRight * TILE_SIZE - ew;
+            e.vx = -e.vx; // разворот при ударе
+        }
+    }
+    else if (e.vx < 0) // влево
+    {
+        int txLeft = (int)(newX / TILE_SIZE);
+        int tyTop = (int)(newY / TILE_SIZE);
+        int tyBottom = (int)((newY + eh - 1) / TILE_SIZE);
+
+        bool collide = false;
+        for (int ty = tyTop; ty <= tyBottom; ++ty)
+        {
+            if (IsSolid(txLeft, ty))
+            {
+                collide = true;
+                break;
+            }
+        }
+
+        if (collide)
+        {
+            newX = (txLeft + 1) * TILE_SIZE;
+            e.vx = -e.vx; // разворот
+        }
+    }
+
+    e.x = newX;
+
+    // движение по Y
+    newY = e.y + e.vy * dt;
+
+    if (e.vy > 0) // падение вниз
+    {
+        int tyBottom = (int)((newY + eh - 1) / TILE_SIZE);
+        int txLeft = (int)(e.x / TILE_SIZE);
+        int txRight = (int)((e.x + ew - 1) / TILE_SIZE);
+
+        bool collide = false;
+        for (int tx = txLeft; tx <= txRight; ++tx)
+        {
+            if (IsSolid(tx, tyBottom))
+            {
+                collide = true;
+                break;
+            }
+        }
+
+        if (collide)
+        {
+            newY = tyBottom * TILE_SIZE - eh;
+            e.vy = 0;
+        }
+    }
+    else if (e.vy < 0) // вверх
+    {
+        int tyTop = (int)(newY / TILE_SIZE);
+        int txLeft = (int)(e.x / TILE_SIZE);
+        int txRight = (int)((e.x + ew - 1) / TILE_SIZE);
+
+        bool collide = false;
+        for (int tx = txLeft; tx <= txRight; ++tx)
+        {
+            if (IsSolid(tx, tyTop))
+            {
+                collide = true;
+                break;
+            }
+        }
+
+        if (collide)
+        {
+            newY = (tyTop + 1) * TILE_SIZE;
+            e.vy = 0;
+        }
+    }
+
+    e.y = newY;
+}
+
+// Спавн врагов на некоторых платформах
+void InitEnemies()
+{
+    g_enemyCount = 0;
+
+    // несколько врагов
+    // враг 0
+    g_enemies[g_enemyCount].x = 12 * TILE_SIZE;
+    g_enemies[g_enemyCount].y = 11 * TILE_SIZE;
+    g_enemies[g_enemyCount].vx = -60.0f;
+    g_enemies[g_enemyCount].vy = 0.0f;
+    g_enemies[g_enemyCount].alive = true;
+    g_enemyCount++;
+
+    // враг 1
+    g_enemies[g_enemyCount].x = 27 * TILE_SIZE;
+    g_enemies[g_enemyCount].y = 9 * TILE_SIZE;
+    g_enemies[g_enemyCount].vx = 60.0f;
+    g_enemies[g_enemyCount].vy = 0.0f;
+    g_enemies[g_enemyCount].alive = true;
+    g_enemyCount++;
+
+    // враг 2
+    g_enemies[g_enemyCount].x = 65 * TILE_SIZE;
+    g_enemies[g_enemyCount].y = 10 * TILE_SIZE;
+    g_enemies[g_enemyCount].vx = -80.0f;
+    g_enemies[g_enemyCount].vy = 0.0f;
+    g_enemies[g_enemyCount].alive = true;
+    g_enemyCount++;
+}
+
+// Обновление врагов и проверка столкновения с игроком
+void UpdateEnemies(float dt)
+{
+    const int pw = 24;
+    const int ph = 32;
+    const int ew = 24;
+    const int eh = 32;
+
+    for (int i = 0; i < g_enemyCount; ++i)
+    {
+        if (!g_enemies[i].alive) continue;
+
+        MoveEnemy(g_enemies[i], dt);
+
+        // проверка столкновения с игроком
+        if (RectsOverlap(g_player.x, g_player.y, pw, ph,
+            g_enemies[i].x, g_enemies[i].y, ew, eh))
+        {
+            ResetPlayer();
+            return;
+        }
+    }
+}
+
+// Спавн пули
+void SpawnBullet()
+{
+    // найдём свободный слот
+    for (int i = 0; i < MAX_BULLETS; ++i)
+    {
+        if (!g_bullets[i].active)
+        {
+            g_bullets[i].active = true;
+            g_bullets[i].vx = (g_playerDir >= 0 ? 400.0f : -400.0f);
+
+            // начальная позиция пули — примерно из середины игрока
+            const int pw = 24;
+            const int ph = 32;
+            g_bullets[i].x = g_player.x + pw / 2;
+            g_bullets[i].y = g_player.y + ph / 2;
+            break;
+        }
+    }
+}
+
+// Обновление пуль и проверка попаданий
+void UpdateBullets(float dt)
+{
+    const int bw = 8;
+    const int bh = 4;
+    const int ew = 24;
+    const int eh = 32;
+
+    for (int i = 0; i < MAX_BULLETS; ++i)
+    {
+        if (!g_bullets[i].active) continue;
+
+        g_bullets[i].x += g_bullets[i].vx * dt;
+
+        // если пуля ушла далеко за границы уровня — отключаем
+        if (g_bullets[i].x < 0 || g_bullets[i].x > LEVEL_W * TILE_SIZE)
+        {
+            g_bullets[i].active = false;
+            continue;
+        }
+
+        // столкновение с твёрдым блоком
+        int tx = (int)(g_bullets[i].x / TILE_SIZE);
+        int ty = (int)(g_bullets[i].y / TILE_SIZE);
+        if (IsSolid(tx, ty))
+        {
+            g_bullets[i].active = false;
+            continue;
+        }
+
+        // попадание во врага
+        for (int e = 0; e < g_enemyCount; ++e)
+        {
+            if (!g_enemies[e].alive) continue;
+
+            if (RectsOverlap(g_bullets[i].x, g_bullets[i].y, bw, bh,
+                g_enemies[e].x, g_enemies[e].y, ew, eh))
+            {
+                g_bullets[i].active = false;
+                g_enemies[e].alive = false;
+                break;
+            }
+        }
+    }
+}
+
+// Обработка стрельбы (клавиша Z)
+void HandleShooting(float dt)
+{
+    g_shootCooldown -= dt;
+    if (g_shootCooldown < 0.0f) g_shootCooldown = 0.0f;
+
+    // Z — 0x5A
+    if ((GetAsyncKeyState(0x5A) & 0x8000) && g_shootCooldown <= 0.0f)
+    {
+        SpawnBullet();
+        g_shootCooldown = 0.25f; // 4 выстрела в секунду максимум
+    }
+}
+
+// Обновление камеры (центрируем на игроке)
+void UpdateCamera()
+{
+    const int pw = 24;
+
+    g_camX = g_player.x + pw / 2 - SCREEN_W / 2;
+
+    if (g_camX < 0) g_camX = 0;
+
+    float maxCamX = (float)(LEVEL_W * TILE_SIZE - SCREEN_W);
+    if (g_camX > maxCamX) g_camX = maxCamX;
 }
 
 // Рендер кадра на окно
@@ -359,7 +896,7 @@ bool InitGraphics()
     ZeroMemory(&g_bmi, sizeof(g_bmi));
     g_bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
     g_bmi.bmiHeader.biWidth = SCREEN_W;
-    g_bmi.bmiHeader.biHeight = -SCREEN_H; // отрицательная высота -> верхний левый (top-down)
+    g_bmi.bmiHeader.biHeight = -SCREEN_H; // top-down
     g_bmi.bmiHeader.biPlanes = 1;
     g_bmi.bmiHeader.biBitCount = 32;
     g_bmi.bmiHeader.biCompression = BI_RGB;
@@ -369,11 +906,15 @@ bool InitGraphics()
 
 void InitGame()
 {
-    g_player.x = 50.0f;
-    g_player.y = 100.0f;
-    g_player.vx = 0.0f;
-    g_player.vy = 0.0f;
-    g_player.onGround = false;
+    BuildLevel_3();
+    ResetPlayer();
+    InitEnemies();
+
+    // обнулим пули
+    for (int i = 0; i < MAX_BULLETS; ++i)
+    {
+        g_bullets[i].active = false;
+    }
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
@@ -406,12 +947,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         if (dt > 0.05f) dt = 0.05f; // ограничим шаг
         prevTime = currTime;
 
-        // обновление логики
+        // логика
         MovePlayer(dt);
+        UpdateEnemies(dt);
+        HandleShooting(dt);
+        UpdateBullets(dt);
+        UpdateCamera();
 
-        // рендер в буфер
+        // рендер
         ClearScreen(MakeColor(50, 50, 80)); // фон
         DrawLevel();
+        DrawEnemies();
+        DrawBullets();
         DrawPlayer();
 
         // вывод на экран
@@ -419,7 +966,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         PresentFrame(hdc);
         ReleaseDC(g_hWnd, hdc);
 
-        // можно немного "подтормозить", чтобы снизить нагрузку
         Sleep(1);
     }
 
