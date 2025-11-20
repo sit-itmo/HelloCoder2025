@@ -75,7 +75,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_DEPRECATE;WIN32;_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\zlib;$(SolutionDir)3rdparty\libpng;</AdditionalIncludeDirectories>
     </ClCompile>
@@ -142,6 +142,7 @@
     <ClCompile Include="pngrtran.c" />
     <ClCompile Include="pngrutil.c" />
     <ClCompile Include="pngset.c" />
+    <ClCompile Include="pngsimd.c" />
     <ClCompile Include="pngtrans.c" />
     <ClCompile Include="pngwio.c" />
     <ClCompile Include="pngwrite.c" />
@@ -150,6 +151,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pnglibconf.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\zlib\zlib.vcxproj">
+      <Project>{a1155b6f-131a-491f-a1fa-21a91763c3c8}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

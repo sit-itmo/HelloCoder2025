@@ -1,4 +1,6 @@
 #include <windows.h>
+#include <vector>
+#include <png.h>
 
 //
 // Простые настройки игры
@@ -80,6 +82,139 @@ void PutPixel(int x, int y, unsigned int color)
 {
     if (x < 0 || x >= SCREEN_W || y < 0 || y >= SCREEN_H) return;
     g_pixels[y * SCREEN_W + x] = color;
+}
+
+
+struct PngImage
+{
+    int width;
+    int height;
+    std::vector<unsigned char> pixels; // RGBA: 4 байта на пиксель
+};
+
+
+PngImage TestImage;
+
+bool LoadPNG(const char* filename, PngImage& out)
+{
+    FILE* fp = fopen(filename, "rb");
+    if (!fp) return false;
+
+    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) return false;
+
+    png_infop info = png_create_info_struct(png);
+    if (!info) return false;
+
+    if (setjmp(png_jmpbuf(png))) return false;
+
+    png_init_io(png, fp);
+    png_read_info(png, info);
+
+    out.width = png_get_image_width(png, info);
+    out.height = png_get_image_height(png, info);
+
+    png_byte color_type = png_get_color_type(png, info);
+    png_byte bit_depth = png_get_bit_depth(png, info);
+
+    // преобразуем к RGBA 8-bit
+    if (bit_depth == 16) png_set_strip_16(png);
+    if (color_type == PNG_COLOR_TYPE_PALETTE)
+        png_set_palette_to_rgb(png);
+
+    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
+        png_set_expand_gray_1_2_4_to_8(png);
+
+    if (png_get_valid(png, info, PNG_INFO_tRNS))
+        png_set_tRNS_to_alpha(png);
+
+    if (color_type == PNG_COLOR_TYPE_RGB ||
+        color_type == PNG_COLOR_TYPE_GRAY ||
+        color_type == PNG_COLOR_TYPE_PALETTE)
+    {
+        png_set_filler(png, 0xFF, PNG_FILLER_AFTER); // добавляем альфа-канал
+    }
+
+    if (color_type == PNG_COLOR_TYPE_GRAY ||
+        color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+    {
+        png_set_gray_to_rgb(png);
+    }
+
+    png_read_update_info(png, info);
+
+    // читаем построчно
+    out.pixels.resize(out.width * out.height * 4);
+    std::vector<png_bytep> rows(out.height);
+
+    for (int y = 0; y < out.height; y++)
+        rows[y] = (png_bytep)(out.pixels.data() + y * out.width * 4);
+
+    png_read_image(png, rows.data());
+    png_destroy_read_struct(&png, &info, NULL);
+    fclose(fp);
+    return true;
+}
+
+void DrawPNG(
+    const PngImage& img,
+    float dstX, float dstY,
+    float scale,
+    float globalAlpha = 1.0f  // 0..1
+)
+{
+    int newW = (int)(img.width * scale);
+    int newH = (int)(img.height * scale);
+
+    for (int y = 0; y < newH; ++y)
+    {
+        float srcYf = (float)y / scale;
+        int srcY = (int)srcYf;
+
+        if (srcY < 0 || srcY >= img.height) continue;
+
+        for (int x = 0; x < newW; ++x)
+        {
+            float srcXf = (float)x / scale;
+            int srcX = (int)srcXf;
+
+            if (srcX < 0 || srcX >= img.width) continue;
+
+            unsigned char* p =
+                (unsigned char*)&img.pixels[(srcY * img.width + srcX) * 4];
+
+            unsigned char r = p[0];
+            unsigned char g = p[1];
+            unsigned char b = p[2];
+            unsigned char a = p[3];
+
+            // итоговая альфа
+            float alpha = (a / 255.0f) * globalAlpha;
+            if (alpha <= 0.01f) continue;
+
+            // позиция на экране
+            int dx = (int)(dstX + x);
+            int dy = (int)(dstY + y);
+
+            // читаем текущий пиксель экрана
+            extern unsigned int* g_pixels; // ваш основной буфер
+            if (dx < 0 || dx >= SCREEN_W || dy < 0 || dy >= SCREEN_H) continue;
+
+            unsigned int dstColor = g_pixels[dy * SCREEN_W + dx];
+
+            unsigned char db = dstColor & 0xFF;
+            unsigned char dg = (dstColor >> 8) & 0xFF;
+            unsigned char dr = (dstColor >> 16) & 0xFF;
+
+            // альфа-композитинг
+            unsigned char rr = (unsigned char)(dr * (1 - alpha) + r * alpha);
+            unsigned char gg = (unsigned char)(dg * (1 - alpha) + g * alpha);
+            unsigned char bb = (unsigned char)(db * (1 - alpha) + b * alpha);
+
+            unsigned int out = (rr << 16) | (gg << 8) | bb;
+            PutPixel(dx, dy, out);
+        }
+    }
 }
 
 // Очистка экрана
@@ -927,6 +1062,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 
     InitGame();
 
+
+    LoadPNG("d:\\HelloCoder2025\\assets\\example.png", TestImage);
+    
     DWORD prevTime = GetTickCount();
 
     MSG msg;
@@ -960,6 +1098,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         DrawEnemies();
         DrawBullets();
         DrawPlayer();
+
+        DrawPNG(TestImage, 100, 100, 2.0f, 0.8f);
 
         // вывод на экран
         HDC hdc = GetDC(g_hWnd);
