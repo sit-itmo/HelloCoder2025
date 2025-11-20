@@ -1,6 +1,13 @@
 #include <windows.h>
 #include <vector>
 #include <png.h>
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include <map>
+#include <string>
+#include <vector>
+#include <stdint.h> // для uint32_t
+
 
 //
 // Простые настройки игры
@@ -20,6 +27,23 @@ const float JUMP_SPEED = -450.0f;
 
 HWND g_hWnd = NULL;
 bool g_running = true;
+
+struct Glyph
+{
+    int width;
+    int height;
+    int bearingX;
+    int bearingY;
+    int advance; // в 1/64 пиксела, но мы сразу переведём в пиксели
+
+    std::vector<unsigned char> bitmap; // 8-битный альфа-канал (серый)
+};
+
+FT_Library g_ftLib = nullptr;
+FT_Face    g_ftFace = nullptr;
+
+// Кэш глифов: по юникод-коду
+std::map<uint32_t, Glyph> g_glyphs;
 
 // буфер кадра (ARGB)
 unsigned int* g_pixels = 0;
@@ -82,6 +106,182 @@ void PutPixel(int x, int y, unsigned int color)
 {
     if (x < 0 || x >= SCREEN_W || y < 0 || y >= SCREEN_H) return;
     g_pixels[y * SCREEN_W + x] = color;
+}
+
+bool InitFreeType(const char* fontPath, int pixelSize)
+{
+    if (FT_Init_FreeType(&g_ftLib))
+        return false;
+
+    if (FT_New_Face(g_ftLib, fontPath, 0, &g_ftFace))
+        return false;
+
+    // задаём размер в пикселях по высоте
+    if (FT_Set_Pixel_Sizes(g_ftFace, 0, pixelSize))
+        return false;
+
+    return true;
+}
+
+bool LoadGlyph(uint32_t codepoint, Glyph& out)
+{
+    // Загружаем глиф
+    if (FT_Load_Char(g_ftFace, codepoint, FT_LOAD_RENDER))
+        return false;
+
+    FT_GlyphSlot slot = g_ftFace->glyph;
+    FT_Bitmap& bmp = slot->bitmap;
+
+    out.width = bmp.width;
+    out.height = bmp.rows;
+    out.bearingX = slot->bitmap_left;
+    out.bearingY = slot->bitmap_top;
+    out.advance = slot->advance.x >> 6; // из 26.6 fixed в пиксели
+
+    out.bitmap.assign(bmp.buffer, bmp.buffer + bmp.width * bmp.rows);
+    return true;
+}
+
+void PreloadAsciiGlyphs()
+{
+    g_glyphs.clear();
+
+    for (uint32_t cp = 0x20; cp <= 0x7E; ++cp)
+    {
+        Glyph g;
+        if (LoadGlyph(cp, g))
+        {
+            g_glyphs[cp] = g;
+        }
+    }
+}
+
+void BlendPixel(int x, int y,
+    unsigned char fr, unsigned char fg, unsigned char fb,
+    float alpha)
+{
+    if (x < 0 || x >= SCREEN_W || y < 0 || y >= SCREEN_H) return;
+
+    unsigned int dst = g_pixels[y * SCREEN_W + x];
+
+    unsigned char db = dst & 0xFF;
+    unsigned char dg = (dst >> 8) & 0xFF;
+    unsigned char dr = (dst >> 16) & 0xFF;
+
+    unsigned char rr = (unsigned char)(dr * (1.0f - alpha) + fr * alpha);
+    unsigned char gg = (unsigned char)(dg * (1.0f - alpha) + fg * alpha);
+    unsigned char bb = (unsigned char)(db * (1.0f - alpha) + fb * alpha);
+
+    unsigned int out = (rr << 16) | (gg << 8) | bb;
+    PutPixel(x, y, out);
+}
+
+// Возвращает смещение по X (advance), чтобы можно было писать строки
+int DrawGlyph(uint32_t codepoint, int penX, int baselineY,
+    unsigned char r, unsigned char g, unsigned char b,
+    float globalAlpha = 1.0f)
+{
+    auto it = g_glyphs.find(codepoint);
+    if (it == g_glyphs.end())
+    {
+        // если глиф не предзагружен — попробуем загрузить на лету
+        Glyph g;
+        if (!LoadGlyph(codepoint, g))
+            return 0; // ничего не рисуем
+
+        g_glyphs[codepoint] = g;
+        it = g_glyphs.find(codepoint);
+    }
+
+    const Glyph& glyph = it->second;
+
+    // левый верхний угол глифа
+    int x0 = penX + glyph.bearingX;
+    int y0 = baselineY - glyph.bearingY; // FT отсчитывает от базовой линии вверх
+
+    for (int y = 0; y < glyph.height; ++y)
+    {
+        for (int x = 0; x < glyph.width; ++x)
+        {
+            unsigned char a = glyph.bitmap[y * glyph.width + x];
+            if (a == 0) continue;
+
+            float alpha = (a / 255.0f) * globalAlpha;
+            if (alpha <= 0.01f) continue;
+
+            int sx = x0 + x;
+            int sy = y0 + y;
+            BlendPixel(sx, sy, r, g, b, alpha);
+        }
+    }
+
+    return glyph.advance;
+}
+
+void DrawAsciiText(const std::string& text, int x, int y,
+    unsigned char r, unsigned char g, unsigned char b,
+    float globalAlpha = 1.0f)
+{
+    int penX = x;
+    for (unsigned char ch : text)
+    {
+        if (ch == '\n')
+        {
+            y += 20;        // простой переход на новую строку
+            penX = x;
+            continue;
+        }
+
+        penX += DrawGlyph((uint32_t)ch, penX, y, r, g, b, globalAlpha);
+    }
+}
+
+// Декодирует первый UTF-8 символ из строки s, возвращает его код
+// и количество использованных байтов (outLen).
+uint32_t DecodeUTF8Char(const char* s, int& outLen)
+{
+    unsigned char c = (unsigned char)s[0];
+    if (c < 0x80)
+    {
+        outLen = 1;
+        return c;
+    }
+    else if ((c & 0xE0) == 0xC0)
+    {
+        outLen = 2;
+        return ((c & 0x1F) << 6) |
+            ((unsigned char)s[1] & 0x3F);
+    }
+    else if ((c & 0xF0) == 0xE0)
+    {
+        outLen = 3;
+        return ((c & 0x0F) << 12) |
+            (((unsigned char)s[1] & 0x3F) << 6) |
+            ((unsigned char)s[2] & 0x3F);
+    }
+    else if ((c & 0xF8) == 0xF0)
+    {
+        outLen = 4;
+        return ((c & 0x07) << 18) |
+            (((unsigned char)s[1] & 0x3F) << 12) |
+            (((unsigned char)s[2] & 0x3F) << 6) |
+            ((unsigned char)s[3] & 0x3F);
+    }
+    else
+    {
+        outLen = 1;
+        return 0xFFFD; // replacement character
+    }
+}
+
+void DrawUtf8Char(const char* utf8,
+    int x, int baselineY,
+    unsigned char r, unsigned char g, unsigned char b,
+    float globalAlpha = 1.0f)
+{
+    int len = 0;
+    uint32_t cp = DecodeUTF8Char(utf8, len);
+    DrawGlyph(cp, x, baselineY, r, g, b, globalAlpha);
 }
 
 
@@ -1063,6 +1263,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     InitGame();
 
 
+    InitFreeType("d:\\HelloCoder2025\\assets\\NotoSansJP-Regular.ttf", 18);
+    PreloadAsciiGlyphs();
     LoadPNG("d:\\HelloCoder2025\\assets\\example.png", TestImage);
     
     DWORD prevTime = GetTickCount();
@@ -1099,7 +1301,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         DrawBullets();
         DrawPlayer();
 
-        DrawPNG(TestImage, 100, 100, 2.0f, 0.8f);
+        DrawGlyph(0x2740, 200, 80, 255, 0, 0, 0.9f);
+
+        DrawAsciiText("Hello, Skybound!", 20, 40, 255, 255, 255, 0.95f);
+        //DrawPNG(TestImage, 100, 100, 2.0f, 0.8f);
 
         // вывод на экран
         HDC hdc = GetDC(g_hWnd);
