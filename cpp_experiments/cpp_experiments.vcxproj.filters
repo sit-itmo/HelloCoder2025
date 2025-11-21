@@ -4,8 +4,9 @@
     <ClCompile Include="cpp_experiments_0_basic.cpp" />
     <ClCompile Include="cpp_experiments_1.cpp" />
     <ClCompile Include="test_c.c" />
-    <ClCompile Include="cpp_experiments.cpp" />
+    <ClCompile Include="cpp_experiments_2.cpp" />
     <ClCompile Include="buf.cpp" />
+    <ClCompile Include="cpp_experiments.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="buf.h" />
