@@ -6,6 +6,7 @@
     <ClCompile Include="test_c.c" />
     <ClCompile Include="cpp_experiments_2.cpp" />
     <ClCompile Include="buf.cpp" />
+    <ClCompile Include="cpp_experiments_3.cpp" />
     <ClCompile Include="cpp_experiments.cpp" />
   </ItemGroup>
   <ItemGroup>
