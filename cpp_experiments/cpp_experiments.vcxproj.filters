@@ -8,6 +8,7 @@
     <ClCompile Include="buf.cpp" />
     <ClCompile Include="cpp_experiments_3.cpp" />
     <ClCompile Include="cpp_experiments_4.cpp" />
+    <ClCompile Include="cpp_experiments_5.cpp" />
     <ClCompile Include="cpp_experiments.cpp" />
   </ItemGroup>
   <ItemGroup>

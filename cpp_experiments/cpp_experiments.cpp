@@ -1,172 +1,119 @@
 #include <stdio.h>
-#include <stdlib.h>
 
-struct IDumpable
+#include <queue>
+#include <map>
+#include <string>
+#include <vector>
+#include <ios>
+#include <iostream>
+
+//STL
+class T
 {
-    virtual void Dump() const=0;
+    std::vector<int> test;
 };
 
-struct Wheel : public IDumpable
-{
-    Wheel() { printf("\n+[(0x%x)Wheel]", this); }
-    ~Wheel() { printf("\n-[(0x%x)Wheel]", this); }
-    void Dump() const { printf("\n![(0x%x)Wheel]::Dump", this); }
-};
+class A {};
+class X {};
+class C {};
 
-struct Car : public IDumpable
-{
-    Wheel Wheels[4];
-    Car() { printf("\n+[(0x%x)Car]", this); }
-    ~Car() { printf("\n-[(0x%x)Car]", this); }
-    virtual void Dump() const
-    {
-        printf("\n![(0x%x)Car]::Dump", this);
-        for (const auto& w : Wheels)
-        {
-            w.Dump();
-        }
-    }
-};
 
-struct Color : public IDumpable
-{
-    char R, G, B;
-    Color() { printf("\n+[(0x%x)Color]", this); }
-    ~Color() { printf("\n-[(0x%x)Color]", this); }
-    void Dump() const { printf("\n![(0x%x)Color]::Dump", this); }
-};
+class Magic : public X, public C {};
 
-struct RivalCar : private Car
-{
-    Color RivalColor;
-    RivalCar() { printf("\n+[(0x%x)RivalCar]", this); }
-    ~RivalCar() { printf("\n-[(0x%x)RivalCar]", this); }
-    void Dump()const
-    {
-        Car::Dump();
-        printf("\n![(0x%x)RivalCar]::Dump", this);
-        RivalColor.Dump();
-    }
-};
+//template <typename T> void Test() {}
+//template <> void Test<Magic>()
+//{
+//}
+//template <> void Test<C>()
+//{
+//}
 
-struct PlayerCar : public Car
-{
-    const char* pPlayrName;
-    PlayerCar(const char* p_name) : pPlayrName(p_name) { printf("\n+[(0x%x)PlayerCar]", this); }
-    ~PlayerCar() { printf("\n-[(0x%x)PlayerCar]", this); }
-};
 
-struct TrafficCar : public Car
-{
-    int Rank;
-    TrafficCar() { Rank = rand(); printf("\n+[(0x%x)TrafficCar]", this); }
-    ~TrafficCar() { printf("\n-[(0x%x)TrafficCar]", this); }
-};
 
-void TestCar(Car* p_car)
+template <typename T, typename B>
+struct IsInherit
 {
-    printf("\n++++++++++++++++++++++++++++");
-    p_car->Dump();
-    printf("\n++++++++++++++++++++++++++++");
-}
+    static int Test(B*);
+    static char Test(...);
+    enum { Value = sizeof(Test((T*)0)) > 1 };
+};
 
 int main()
 {
-    
+    std::cout << "Hello!" << 10;
+    return 0;
+}
+
+using namespace std;
+
+int test_map()
+{
+    const int result = IsInherit<Magic, X>::Value;
+    std::map<std::string, int> Values;
+
+    Values["Hello!"] = 1;
+    Values["Test"] = 2;
+
+    int y = Values["Test"];
+    //std::map<std::string, int>::iterator g = Values.find("Hello!");
+    //auto g = Values.find("Hello!");
+    map<string, int>::iterator g = Values.find("Hello!");
+    if (g == Values.end())
     {
-        Car c;
-        Car cc;
-        RivalCar rc;
-
-        RivalCar *p_rc = &rc;
-        Car* p_c = &rc;
-
-
-        IDumpable* p_dumpable[] =
-        {
-            &c, &c.Wheels[0], &rc, &rc.RivalColor
-        };
-
-        for (auto* p : p_dumpable)
-        {
-            p->Dump();
-        }
-
-
-        TestCar(p_c);
-        printf("\n----------------------------");
-        p_rc->Dump();
-        //c.Wheels[0].Dump();
-        //c.Dump();
-        //((Car)c).Dump();
-        //((Car&)c).Dump();
-        //((Car*)&c)->Dump();
-        printf("\n----------------------------");
+        // Not found
     }
+    else
+    {
+        int yy = g->second;
+    }
+
+    return 0;
+
+}
+
+int test_string()
+{
+    std::string test = "sdfsdfds";
+
+    test += "!!!!";
+    test = "[" + test + "]";
+
+    printf("Hello %s!", test.c_str());
+    
+    return 0;
+}
+
+
+int test_vector()
+{
+    std::vector<int> test;
+
+    test.push_back(1);
+    test.push_back(2);
+    test.push_back(3);
+    test.push_back(4);
+   
+    std::vector<int>::reverse_iterator it;
+    for (it = test.rbegin(); it != test.rend(); it++)
+    {
+        int t = *it;
+        *it = *it + 1;
+        printf("\n%d:= %d!", it - test.rbegin(), *it);
+    }
+
+    for (int i = 0; i < test.size(); i++)
+    {
+        int t = test[i];
+        printf("\n%d:= %d!", i, t);
+    }
+
+    test.clear();
+
+
+
 
     return 0;
 }
 
 
-#if 0
-struct Math
-{
-private:
-    Math() {};
-public:
-    static float Cos(float x);
-    float Sin(float x);
-    static float Tan(float x);
-    static float Sqrt(float x);
-
-};
-
-struct A
-{
-private:
-    A() {}
-    int x = 0;
-
-
-public:
-    static A* Create()
-    {
-        return new A();
-    }
-};
-
-
-void test()
-{
-    //A a;
-    A* p_a = A::Create();
-}
-
-struct Car
-{
-private:
-    Wheel* Wheels[4];
-public:
-    Car()
-    {
-        Wheels[0] = new Wheel();
-        Wheels[1] = new Wheel();
-        Wheels[2] = new Wheel();
-        Wheels[3] = new Wheel();
-    }
-    ~Car()
-    {
-        //if (Wheels[0] != nullptr) delete Wheels[0];
-        //if (Wheels[1] != nullptr) delete Wheels[1];
-        //if (Wheels[2] != nullptr) delete Wheels[2];
-        //if (Wheels[3] != nullptr) delete Wheels[3];
-
-        Wheels[0] ? (delete Wheels[0], 0) : 0;
-        Wheels[1] ? (delete Wheels[1], 0) : 0;
-        Wheels[2] ? (delete Wheels[2], 0) : 0;
-        Wheels[3] ? (delete Wheels[3], 0) : 0;
-    }
-
-};
-#endif
 
