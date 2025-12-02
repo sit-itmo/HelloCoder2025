@@ -3,6 +3,8 @@
   <ItemGroup>
     <ClCompile Include="game.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Skybound.cpp" />
+    <ClCompile Include="PlatformWin32.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Skybound.h" />

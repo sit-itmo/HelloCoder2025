@@ -130,6 +130,8 @@
   <ItemGroup>
     <ClCompile Include="game.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="PlatformWin32.cpp" />
+    <ClCompile Include="Skybound.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\3rdparty\freetype\freetype.vcxproj">
