@@ -3,6 +3,6 @@
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
-    Skybound::getSingleton()->InitConsoleAndTest();
+    Skybound::getSingleton()->Start();
     return 0;
 }

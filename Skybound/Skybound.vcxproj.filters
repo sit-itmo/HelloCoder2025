@@ -4,7 +4,8 @@
     <ClCompile Include="game.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Skybound.cpp" />
-    <ClCompile Include="PlatformWin32.cpp" />
+    <ClCompile Include="Win32Platform.cpp" />
+    <ClCompile Include="Picture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Skybound.h" />

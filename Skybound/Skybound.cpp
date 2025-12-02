@@ -14,10 +14,11 @@ Skybound* Skybound::getSingleton()
 
 void WIN_InitConsole(void);
 
-void Skybound::InitConsoleAndTest()
+void Skybound::Start()
 {
-    WIN_InitConsole();
     printf("\n[Skybound Hello!]\n");
+    pPlatform = Win32PlatformBuilder::Build();
+    pPlatform->Setup("Skybound!", {800, 600});
+    pPlatform->Loop();
 }
-
 
