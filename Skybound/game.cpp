@@ -1252,7 +1252,7 @@ void InitGame()
     }
 }
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
+int WINAPI WinMain_old(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
     if (!InitWindow(hInstance, nCmdShow))
         return 0;

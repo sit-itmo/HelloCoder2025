@@ -129,6 +129,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="game.cpp" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\3rdparty\freetype\freetype.vcxproj">
@@ -137,6 +138,10 @@
     <ProjectReference Include="..\3rdparty\libpng\libpng.vcxproj">
       <Project>{8e769520-9c6f-48be-8550-ddd52e9c014e}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Skybound.h" />
+    <ClInclude Include="Types2D.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
