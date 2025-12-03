@@ -14,7 +14,7 @@ void Logging::LogMessageEx(const char* p_file, int line, const char* p_module, e
 const char* GetJustFileName(const char* p_text)
 {
     const char* p_res = strrchr(p_text, '\\');
-    return p_res != p_text ? p_res + 1 : p_text;
+    return p_res == NULL ? p_text : p_res + 1;
 }
 
 void Logging::LogMessage(const char* p_file, int line, const char* p_module, enum Kind kind, const char* p_text)
@@ -29,20 +29,39 @@ void Logging::LogMessage(const char* p_file, int line, const char* p_module, enu
     if (kind != Kind_PRINT)
     {
         PutText("\n");
+        if (_PrintFile)
+        {
+            snprintf(buf, sizeof(buf), "%12s:%4d: ", GetJustFileName(p_file), line);
+            PutText(buf);
+        }
+        if (_PrintTime)
+        {
+            snprintf(buf, sizeof(buf), "%8lld ", __rdtsc());
+            PutText(buf);
+        }
+        if (_PrintModule)
+        {
+            snprintf(buf, sizeof(buf), "[%6s] ", p_module == nullptr ? " " : p_module);
+            PutText(buf);
+        }
     }
-    snprintf(buf, sizeof(buf), "%12s:%4d:[%8s] ", GetJustFileName(p_file), line, p_module);
-    PutText(buf);
 
     if (kind == Kind_ERROR)
     {
-        PutText("----------- ERROR!!!");
+        PutText(ANSI::makeStyle(ANSI::Color::Red).c_str());
+        PutText("----------- ERROR!!! ");
     }
     else if (kind == Kind_WARNI)
     {
-        PutText("WARNING");
+        PutText(ANSI::makeStyle(ANSI::Color::Yellow).c_str());
+        PutText("<WARNING>");
     }
 
     PutText(p_text);
+    if (kind == Kind_ERROR || kind == Kind_WARNI)
+    {
+        PutText(ANSI::reset().c_str());
+    }
 }
 
 void Logging::PutText(const char* p_text)

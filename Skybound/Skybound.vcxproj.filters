@@ -11,5 +11,6 @@
   <ItemGroup>
     <ClInclude Include="Skybound.h" />
     <ClInclude Include="Types2D.h" />
+    <ClInclude Include="Formatting.h" />
   </ItemGroup>
 </Project>

@@ -66,7 +66,21 @@ bool Win32Platform::SetupConsole()
     // _setmode(_fileno(stdin),  _O_WTEXT);
     // _setmode(_fileno(stdout), _O_WTEXT);
     // _setmode(_fileno(stderr), _O_WTEXT);
-    return true;
+    
+        // Get the handle to the console output
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (hOut == INVALID_HANDLE_VALUE)
+            return false;
+
+        DWORD dwMode = 0;
+        if (!GetConsoleMode(hOut, &dwMode))
+            return false;
+
+        // Add ENABLE_VIRTUAL_TERMINAL_PROCESSING to the existing mode
+        dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+        SetConsoleMode(hOut, dwMode);
+        return true;
 }
 #else
 void Win32Platform::SetupConsole(void)

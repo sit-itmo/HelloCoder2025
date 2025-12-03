@@ -34,6 +34,9 @@ struct Logging
 private:
     bool _FlushAlways = false;
     bool _TraceEnabled = false;
+    bool _PrintModule = true;
+    bool _PrintFile = true;
+    bool _PrintTime = true;
     bool _Ready = false;
     bool _WriteConsole = true;
     bool _WriteFile = false;
@@ -83,8 +86,7 @@ private:
 #endif
 
 
-
-
+#include "Formatting.h"
 #include "Types2D.h"
 
 typedef unsigned int sColor;
