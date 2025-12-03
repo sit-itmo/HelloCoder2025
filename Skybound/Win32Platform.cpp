@@ -13,11 +13,11 @@ private:
     Picture BackBuffer;
     BITMAPINFO Bmi = { 0 };
 
+    bool SetupConsole();
     bool InitWindow(const sString& caption);
     bool InitGraphics();
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
     void Reset();
-    static void InitConsole();
 
 public:
 
@@ -35,7 +35,7 @@ Platform* Win32PlatformBuilder::Build()
 }
 
 #ifdef _DEBUG
-void Win32Platform::InitConsole()
+bool Win32Platform::SetupConsole()
 {
     // Try to attach to parent console first; if none, create a new one.
     if (!AttachConsole(ATTACH_PARENT_PROCESS))
@@ -66,9 +66,10 @@ void Win32Platform::InitConsole()
     // _setmode(_fileno(stdin),  _O_WTEXT);
     // _setmode(_fileno(stdout), _O_WTEXT);
     // _setmode(_fileno(stderr), _O_WTEXT);
+    return true;
 }
 #else
-void Win32Platform::InitConsole(void)
+void Win32Platform::SetupConsole(void)
 {
 
 }
@@ -93,7 +94,7 @@ bool Win32Platform::InitWindow(const sString& caption)
     if (!RegisterClass(&wc))
         return false;
 
-    RECT rc = { 0, 0, RenderSize.W, RenderSize.H };
+    RECT rc = { 0, 0, (LONG)RenderSize.W, (LONG)RenderSize.H };
     AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
 
     int winW = rc.right - rc.left;

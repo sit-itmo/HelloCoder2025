@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #include <string>
 #include <vector>
 
@@ -10,6 +11,79 @@ typedef float sTime;
 typedef std::string sID;
 typedef std::string sString;
 typedef unsigned int sColor;
+
+#define SKYBOUND_DEFAULT_LOG_FILE "skybound.log"
+
+struct Logging
+{
+    enum { MaxMessageSize = 256 };
+    enum Kind
+    {
+        Kind_PRINT,
+        Kind_PLINE,
+        Kind_TRACE,
+        Kind_ERROR,
+        Kind_DEBUG,
+        Kind_WARNI
+    };
+
+    void PutText(const char* p_text);
+    void LogMessage(const char* p_file, int line, const char* p_module, enum Kind kind, const char* p_text);
+    void LogMessageEx(const char* p_file, int line, const char* p_module, enum Kind kind, const char* p_text, ...);
+
+private:
+    bool _FlushAlways = false;
+    bool _TraceEnabled = false;
+    bool _Ready = false;
+    bool _WriteConsole = true;
+    bool _WriteFile = false;
+    FILE* pLogFile = nullptr;
+   
+    bool Setup();
+};
+
+#ifndef SKY_MODULE
+#define SKY_MODULE "none"
+#endif
+
+#if defined(_WIN32) && defined(_DEBUG)
+#define SKY_BREAKPOINT()  __debugbreak();
+#elif defined(_DEBUG)
+#define SKY_BREAKPOINT()  asm("int $3")
+#else
+#define SKY_BREAKPOINT() {}
+#endif
+
+#ifdef _DEBUG
+#define _SKY_MESSAGE(kind, a) { Skybound::getSingleton()->Log.LogMessage(__FILE__, __LINE__, SKY_MODULE, kind, a); }
+#define _SKY_MESSAGE_EX(kind, a, ...) { Skybound::getSingleton()->Log.LogMessageEx(__FILE__, __LINE__, SKY_MODULE, kind, a, ##__VA_ARGS__); }
+#else
+#define _SKY_MESSAGE(kind, a)         { }
+#define _SKY_MESSAGE_EX(kind, a, ...) { }
+#endif
+
+#define SKY_PRINTLN(a) _SKY_MESSAGE(Logging::Kind::Kind_PLINE, a)
+#define SKY_PRINT(a)   _SKY_MESSAGE(Logging::Kind::Kind_PRINT, a)
+#define SKY_DEBUG(a)   _SKY_MESSAGE(Logging::Kind::Kind_DEBUG, a)
+#define SKY_TRACE(a)   _SKY_MESSAGE(Logging::Kind::Kind_TRACE, a)
+#define SKY_ERROR(a) { _SKY_MESSAGE(Logging::Kind::Kind_ERROR, a); SKY_BREAKPOINT(); }
+#define SKY_WARNING(a) _SKY_MESSAGE(Logging::Kind::Kind_WARNI, a)
+
+#define SKY_PRINTLN_EX(a, ...) _SKY_MESSAGE_EX(Logging::Kind::Kind_PLINE, a, ##__VA_ARGS__)
+#define SKY_PRINT_EX(a, ...)   _SKY_MESSAGE_EX(Logging::Kind::Kind_PRINT, a, ##__VA_ARGS__)
+#define SKY_DEBUG_EX(a, ...)   _SKY_MESSAGE_EX(Logging::Kind::Kind_DEBUG, a, ##__VA_ARGS__)
+#define SKY_TRACE_EX(a, ...)   _SKY_MESSAGE_EX(Logging::Kind::Kind_TRACE, a, ##__VA_ARGS__)
+#define SKY_ERROR_EX(a, ...) { _SKY_MESSAGE_EX(Logging::Kind::Kind_ERROR, a, ##__VA_ARGS__); SKY_BREAKPOINT(); }
+#define SKY_WARNING_EX(a, ...) _SKY_MESSAGE_EX(Logging::Kind::Kind_WARNI, a, ##__VA_ARGS__)
+
+#ifdef _DEBUG
+#define SKY_ASSERT(a) if (!(a)) { SKY_ERROR(#a); }
+#else
+#define SKY_ASSERT(a) {}
+#endif
+
+
+
 
 #include "Types2D.h"
 
@@ -66,7 +140,6 @@ public:
     inline const sColor* Data() const { return pPixels; }
 };
 
-
 class Gameplay;
 
 class IApplication
@@ -91,7 +164,8 @@ public:
         KeyCode_Fire
     };
     virtual ~Platform() {}
-    virtual bool Setup(const sString &caption, const Size2D& size)=0;
+    virtual bool SetupConsole() = 0;
+    virtual bool Setup(const sString& caption, const Size2D& size) = 0;
     virtual void Loop()=0;
     virtual bool GetKeyState(KeyCode code)=0;
 
@@ -110,6 +184,11 @@ public:
 
 public:
     void Start();
+
+    Logging Log;
+
+    Platform* GetPlatform() { return pPlatform; }
+    Gameplay* GetGameplay() { return pGameplay; }
 
 private:
     Platform* pPlatform = nullptr;

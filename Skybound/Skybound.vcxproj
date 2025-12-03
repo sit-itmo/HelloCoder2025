@@ -129,6 +129,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="game.cpp" />
+    <ClCompile Include="Logging.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Picture.cpp" />
     <ClCompile Include="Win32Platform.cpp" />
