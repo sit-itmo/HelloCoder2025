@@ -49,19 +49,34 @@ void Logging::LogMessage(const char* p_file, int line, const char* p_module, enu
     if (kind == Kind_ERROR)
     {
         PutText(ANSI::makeStyle(ANSI::Color::Red).c_str());
-        PutText("----------- ERROR!!! ");
+        PutText("![ERROR]!");
+        PutText(ANSI::reset().c_str());
     }
     else if (kind == Kind_WARNI)
     {
         PutText(ANSI::makeStyle(ANSI::Color::Yellow).c_str());
         PutText("<WARNING>");
+        PutText(ANSI::reset().c_str());
+    }
+    else if (kind == Kind_DEBUG)
+    {
+        PutText(ANSI::makeStyle(ANSI::Color::Magenta).c_str());
+        PutText("--DEBUG--");
+        PutText(ANSI::reset().c_str());
+    }
+    else if (kind == Kind_TRACE)
+    {
+        PutText(ANSI::makeStyle(ANSI::Color::Cyan).c_str());
+        PutText("--TRACE--");
+        PutText(ANSI::reset().c_str());
+    }
+    else if (kind == Kind_PLINE)
+    {
+        PutText(ANSI::reset().c_str());
+        PutText("         ");
     }
 
     PutText(p_text);
-    if (kind == Kind_ERROR || kind == Kind_WARNI)
-    {
-        PutText(ANSI::reset().c_str());
-    }
 }
 
 void Logging::PutText(const char* p_text)

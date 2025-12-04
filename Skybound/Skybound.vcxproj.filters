@@ -7,6 +7,7 @@
     <ClCompile Include="Win32Platform.cpp" />
     <ClCompile Include="Picture.cpp" />
     <ClCompile Include="Logging.cpp" />
+    <ClCompile Include="DumpExample.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Skybound.h" />

@@ -3,8 +3,13 @@
 #include <windows.h>
 #include "Skybound.h"
 
+int Dump_RunTest();
+int WINAPI WinMain_old(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow);
+
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
 {
+    WinMain_old(hInstance, NULL, NULL, nCmdShow);
+    return 0;
     SKY_PRINTLN("Start system");
     SKY_PRINTLN("Testing log system...");
     SKY_PRINT("[");
@@ -28,6 +33,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     {
         SKY_ASSERT(i < 9);
     }
+    Dump_RunTest();
 
     Skybound::getSingleton()->Start();
     return 0;

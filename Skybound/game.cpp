@@ -1239,6 +1239,957 @@ bool InitGraphics()
     return true;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////
+
+// ---------------------------------------------------------
+// Tile & Level
+// ---------------------------------------------------------
+
+enum class TileType : uint8_t
+{
+    Empty = 0,
+    Ground = 1,
+    Spike = 2,
+    Decor = 3
+};
+
+class Tile
+{
+public:
+    Tile() : _type(TileType::Empty) {}
+    explicit Tile(TileType t) : _type(t) {}
+
+    TileType GetType() const { return _type; }
+    void     SetType(TileType t) { _type = t; }
+
+    bool IsSolid() const { return _type == TileType::Ground; }
+    bool IsHazard() const { return _type == TileType::Spike; }
+
+private:
+    TileType _type;
+};
+
+class Level
+{
+public:
+    Level()
+        : _width(LEVEL_W)
+        , _height(LEVEL_H)
+        , _tiles(_width* _height)
+    {
+        Clear();
+    }
+
+    void Allocate()
+    {
+        _width = LEVEL_W;
+        _height = LEVEL_H;
+        _tiles.resize(_width * _height);
+        Clear();
+    }
+    int  GetWidth()  const { return _width; }
+    int  GetHeight() const { return _height; }
+
+    Tile GetTile(int tx, int ty) const
+    {
+        if (tx < 0 || tx >= _width || ty < 0 || ty >= _height)
+            return Tile(TileType::Empty);
+        return _tiles[ty * _width + tx];
+    }
+
+    void SetTile(int tx, int ty, TileType t)
+    {
+        if (tx < 0 || tx >= _width || ty < 0 || ty >= _height)
+            return;
+        _tiles[ty * _width + tx] = Tile(t);
+    }
+
+    bool IsSolid(int tx, int ty) const
+    {
+        return GetTile(tx, ty).IsSolid();
+    }
+
+    bool IsHazard(int tx, int ty) const
+    {
+        return GetTile(tx, ty).IsHazard();
+    }
+
+    void Clear()
+    {
+        /*
+        _tiles.clear();
+        for (int i = 0; i < (_width * _height); i++)
+        {
+            Tile t;
+            t.SetType(TileType::Empty);
+            _tiles.push_back(t);
+        }
+        
+        */
+        for (auto& t : _tiles)
+            t.SetType(TileType::Empty);
+    }
+
+    // ===== Level builders, based on your BuildLevel_1/2/3 =====
+    void BuildLevel1()
+    {
+        Clear();
+        // ground (4 rows)
+        for (int y = _height - 4; y < _height; ++y)
+            for (int x = 0; x < _width; ++x)
+                SetTile(x, y, TileType::Ground);
+
+        // floating platforms
+        for (int x = 10; x < 15; ++x) SetTile(x, 12, TileType::Ground);
+        for (int x = 25; x < 30; ++x) SetTile(x, 10, TileType::Ground);
+        for (int x = 40; x < 46; ++x) SetTile(x, 8, TileType::Ground);
+        for (int x = 60; x < 70; ++x) SetTile(x, 11, TileType::Ground);
+        for (int x = 80; x < 90; ++x) SetTile(x, 9, TileType::Ground);
+
+        // spikes
+        for (int x = 20; x < 30; ++x) SetTile(x, _height - 5, TileType::Spike);
+        for (int x = 42; x < 45; ++x) SetTile(x, 7, TileType::Spike);
+
+        // decor
+        for (int x = 5; x < 10; ++x)  SetTile(x, _height - 5, TileType::Decor);
+        for (int x = 50; x < 55; ++x) SetTile(x, 13, TileType::Decor);
+    }
+
+    void BuildLevel2()
+    {
+        Clear();
+
+        // bottom ground
+        for (int y = _height - 3; y < _height; ++y)
+            for (int x = 0; x < _width; ++x)
+                SetTile(x, y, TileType::Ground);
+
+        // top ceiling
+        for (int x = 0; x < _width; ++x)
+            SetTile(x, 2, TileType::Ground);
+
+        // pillars
+        for (int y = 3; y < _height - 3; ++y)
+        {
+            if (y % 4 == 0)
+            {
+                SetTile(15, y, TileType::Ground);
+                SetTile(35, y, TileType::Ground);
+                SetTile(55, y, TileType::Ground);
+                SetTile(75, y, TileType::Ground);
+            }
+        }
+
+        // spike pits
+        auto MakePit = [this](int x0, int x1)
+            {
+                for (int x = x0; x < x1; ++x)
+                    SetTile(x, _height - 3, TileType::Empty);
+                for (int x = x0; x < x1; ++x)
+                    SetTile(x, _height - 4, TileType::Spike);
+            };
+
+        MakePit(8, 12);
+        MakePit(30, 34);
+        MakePit(60, 64);
+
+        // decor on ceiling
+        for (int x = 5; x < 10; ++x) SetTile(x, 3, TileType::Decor);
+        for (int x = 40; x < 45; ++x) SetTile(x, 3, TileType::Decor);
+        for (int x = 70; x < 75; ++x) SetTile(x, 3, TileType::Decor);
+    }
+
+    void BuildLevel3()
+    {
+        Clear();
+
+        int baseY = _height - 4;
+        for (int step = 0; step < 10; ++step)
+        {
+            int y = baseY - step;
+            int xStart = 5 + step * 6;
+            int xEnd = xStart + 5;
+            if (y < 0) break;
+
+            for (int x = xStart; x <= xEnd && x < _width; ++x)
+                SetTile(x, y, TileType::Ground);
+        }
+
+        // bottom spikes
+        for (int x = 0; x < _width; ++x)
+            SetTile(x, _height - 1, TileType::Spike);
+
+        // safe ground at start/end
+        for (int x = 0; x < 8; ++x)
+            SetTile(x, _height - 2, TileType::Ground);
+        for (int x = _width - 8; x < _width; ++x)
+            SetTile(x, _height - 2, TileType::Ground);
+
+        // decor
+        for (int x = 15; x < 20; ++x) SetTile(x, _height - 6, TileType::Decor);
+        for (int x = 40; x < 45; ++x) SetTile(x, _height - 8, TileType::Decor);
+        for (int x = 70; x < 75; ++x) SetTile(x, _height - 10, TileType::Decor);
+    }
+
+    void Draw(float camX) const
+    {
+        unsigned int colGround = MakeColor(100, 100, 255);
+        unsigned int colSpike = MakeColor(255, 50, 50);
+        unsigned int colDecor = MakeColor(50, 200, 50);
+
+        for (int ty = 0; ty < _height; ++ty)
+        {
+            for (int tx = 0; tx < _width; ++tx)
+            {
+                TileType t = GetTile(tx, ty).GetType();
+                if (t == TileType::Empty) continue;
+
+                int worldX = tx * TILE_SIZE;
+                int worldY = ty * TILE_SIZE;
+                int sx = worldX - (int)camX;
+                int sy = worldY;
+
+                if (sx + TILE_SIZE < 0 || sx >= SCREEN_W) continue;
+                if (sy + TILE_SIZE < 0 || sy >= SCREEN_H) continue;
+
+                unsigned int col = colGround;
+                if (t == TileType::Spike)  col = colSpike;
+                else if (t == TileType::Decor) col = colDecor;
+
+                DrawTileRect(sx, sy, TILE_SIZE, TILE_SIZE, col);
+            }
+        }
+    }
+
+private:
+    int _width;
+    int _height;
+    std::vector<Tile> _tiles;
+};
+
+// ---------------------------------------------------------
+// Sprite (simple)
+// ---------------------------------------------------------
+class Sprite
+{
+public:
+    Sprite()
+        : _image(nullptr)
+        , _scale(1.0f)
+        , _alpha(1.0f)
+    {
+    }
+
+    Sprite(PngImage* img, float scale = 1.0f, float alpha = 1.0f)
+        : _image(img)
+        , _scale(scale)
+        , _alpha(alpha)
+    {
+    }
+
+    void SetImage(PngImage* img) { _image = img; }
+    void SetScale(float s) { _scale = s; }
+    void SetAlpha(float a) { _alpha = a; }
+
+    void Draw(float worldX, float worldY, float camX) const
+    {
+        if (!_image) return;
+        float screenX = worldX - camX;
+        float screenY = worldY;
+        DrawPNG(*_image, screenX, screenY, _scale, _alpha);
+    }
+
+private:
+    PngImage* _image;
+    float     _scale;
+    float     _alpha;
+};
+
+
+// ---------------------------------------------------------
+// Entity
+// ---------------------------------------------------------
+class Entity
+{
+public:
+    Entity()
+        : x(0.0f), y(0.0f)
+        , vx(0.0f), vy(0.0f)
+        , w(16), h(16)
+        , alive(true)
+    {
+    }
+
+    virtual ~Entity() {}
+
+    virtual void Update(float dt, const Level& level) = 0;
+    virtual void Draw(float camX) const = 0;
+
+    bool IsAlive() const { return alive; }
+    void Kill() { alive = false; }
+
+    // Simple AABB collision with another entity
+    bool Intersects(const Entity& other) const
+    {
+        if (!alive || !other.alive) return false;
+        return !(x > other.x + other.w ||
+            other.x > x + w ||
+            y > other.y + other.h ||
+            other.y > y + h);
+    }
+
+    float x, y;
+    float vx, vy;
+    int   w, h;
+    bool  alive;
+};
+
+// ---------------------------------------------------------
+// Particle
+// ---------------------------------------------------------
+class Particle : public Entity
+{
+public:
+    Particle()
+        : lifetime(0.0f)
+        , maxLifetime(1.0f)
+        , color(MakeColor(255, 255, 255))
+    {
+        w = h = 4;
+        alive = false;
+    }
+
+    bool IsAlive() const { return alive; }
+
+    void Init(float px, float py, float pvx, float pvy,
+        float life, unsigned int col)
+    {
+        x = px; y = py;
+        vx = pvx; vy = pvy;
+        maxLifetime = life;
+        lifetime = 0.0f;
+        color = col;
+        alive = true;
+    }
+
+    virtual void Update(float dt, const Level&) override
+    {
+        if (!alive) return;
+
+        lifetime += dt;
+        if (lifetime >= maxLifetime)
+        {
+            alive = false;
+            return;
+        }
+
+        x += vx * dt;
+        y += vy * dt;
+    }
+
+    virtual void Draw(float camX) const override
+    {
+        if (!alive) return;
+        int sx = (int)(x - camX);
+        int sy = (int)y;
+        DrawTileRect(sx, sy, w, h, color);
+    }
+
+private:
+    float lifetime;
+    float maxLifetime;
+    unsigned int color;
+};
+
+// ---------------------------------------------------------
+// Bullets
+// ---------------------------------------------------------
+class xBullet
+{
+public:
+    float x = 0.0f;
+    float y = 0.0f;
+    float vx = 0.0f;
+    bool  alive = false;
+
+    static constexpr int WIDTH = 8;
+    static constexpr int HEIGHT = 4;
+
+    void Fire(float startX, float startY, int dir)
+    {
+        x = startX;
+        y = startY;
+        vx = (dir >= 0) ? 400.0f : -400.0f;
+        alive = true;
+    }
+
+    void Kill() { alive = false; }
+
+    void Draw(float camX) const
+    {
+        if (!alive) return;
+        unsigned int col = MakeColor(255, 255, 255);
+        int sx = (int)(x - camX);
+        int sy = (int)y;
+
+        DrawTileRect(sx, sy, WIDTH, HEIGHT, col);
+    }
+};
+
+//const int MAX_BULLETS = 64;
+xBullet g_xbullets[MAX_BULLETS];
+
+// ---------------------------------------------------------
+// Particles
+// ---------------------------------------------------------
+const int MAX_PARTICLES = 256;
+Particle g_particles[MAX_PARTICLES];
+
+Particle* AllocParticle()
+{
+    for (int i = 0; i < MAX_PARTICLES; ++i)
+    {
+        if (!g_particles[i].IsAlive())
+            return &g_particles[i];
+    }
+    return nullptr;
+}
+
+// ---------------------------------------------------------
+// Person (has health)
+// ---------------------------------------------------------
+class Person : public Entity
+{
+public:
+    Person()
+        : health(1), maxHealth(1)
+    {
+    }
+
+    void SetHealth(int h) { health = h; }
+    void SetMaxHealth(int mh) { maxHealth = mh; }
+    int  GetHealth() const { return health; }
+    bool IsDead() const { return health <= 0; }
+
+    void TakeDamage(int dmg)
+    {
+        health -= dmg;
+        if (health <= 0)
+        {
+            health = 0;
+            alive = false;
+        }
+    }
+
+protected:
+    int health;
+    int maxHealth;
+};
+
+// ---------------------------------------------------------
+// Character (platformer physics + onGround)
+// ---------------------------------------------------------
+class Character : public Person
+{
+public:
+    Character()
+        : onGround(false)
+        , moveSpeed(MOVE_SPEED)
+        , jumpSpeed(JUMP_SPEED)
+        , direction(1)
+    {
+        w = 24;
+        h = 32;
+    }
+
+    virtual ~Character() {}
+
+    void ApplyGravity(float dt)
+    {
+        vy += GRAVITY * dt;
+    }
+
+    void MoveAndCollide(float dt, const Level& level)
+    {
+        // horizontal
+        float newX = x + vx * dt;
+        float newY = y;
+
+        if (vx > 0.0f) // right
+        {
+            int txRight = (int)((newX + w - 1) / TILE_SIZE);
+            int tyTop = (int)(newY / TILE_SIZE);
+            int tyBottom = (int)((newY + h - 1) / TILE_SIZE);
+
+            bool collide = false;
+            for (int ty = tyTop; ty <= tyBottom; ++ty)
+            {
+                if (level.IsSolid(txRight, ty))
+                {
+                    collide = true;
+                    break;
+                }
+            }
+
+            if (collide)
+            {
+                newX = txRight * TILE_SIZE - w;
+                vx = 0.0f;
+            }
+        }
+        else if (vx < 0.0f) // left
+        {
+            int txLeft = (int)(newX / TILE_SIZE);
+            int tyTop = (int)(newY / TILE_SIZE);
+            int tyBottom = (int)((newY + h - 1) / TILE_SIZE);
+
+            bool collide = false;
+            for (int ty = tyTop; ty <= tyBottom; ++ty)
+            {
+                if (level.IsSolid(txLeft, ty))
+                {
+                    collide = true;
+                    break;
+                }
+            }
+
+            if (collide)
+            {
+                newX = (txLeft + 1) * TILE_SIZE;
+                vx = 0.0f;
+            }
+        }
+
+        x = newX;
+
+        // vertical
+        newY = y + vy * dt;
+        onGround = false;
+
+        if (vy > 0.0f) // falling
+        {
+            int tyBottom = (int)((newY + h - 1) / TILE_SIZE);
+            int txLeft = (int)(x / TILE_SIZE);
+            int txRight = (int)((x + w - 1) / TILE_SIZE);
+
+            bool collide = false;
+            for (int tx = txLeft; tx <= txRight; ++tx)
+            {
+                if (level.IsSolid(tx, tyBottom))
+                {
+                    collide = true;
+                    break;
+                }
+            }
+
+            if (collide)
+            {
+                newY = tyBottom * TILE_SIZE - h;
+                vy = 0.0f;
+                onGround = true;
+            }
+        }
+        else if (vy < 0.0f) // jumping up
+        {
+            int tyTop = (int)(newY / TILE_SIZE);
+            int txLeft = (int)(x / TILE_SIZE);
+            int txRight = (int)((x + w - 1) / TILE_SIZE);
+
+            bool collide = false;
+            for (int tx = txLeft; tx <= txRight; ++tx)
+            {
+                if (level.IsSolid(tx, tyTop))
+                {
+                    collide = true;
+                    break;
+                }
+            }
+
+            if (collide)
+            {
+                newY = (tyTop + 1) * TILE_SIZE;
+                vy = 0.0f;
+            }
+        }
+
+        y = newY;
+
+        // basic screen bottom clamp (optionally keep)
+        if (y + h >= SCREEN_H)
+        {
+            y = (float)(SCREEN_H - h);
+            vy = 0.0f;
+            onGround = true;
+        }
+    }
+
+    bool onGround;
+    float moveSpeed;
+    float jumpSpeed;
+    int   direction; // 1 right, -1 left
+};
+
+class xPlayer : public Character
+{
+public:
+    xPlayer()
+        : shootCooldown(0.0f)
+    {
+        maxHealth = 3;
+        health = 3;
+    }
+
+    void Reset()
+    {
+        x = 50.0f;
+        y = 100.0f;
+        vx = vy = 0.0f;
+        onGround = false;
+        direction = 1;
+        alive = true;
+        health = maxHealth;
+        shootCooldown = 0.0f;
+    }
+
+    virtual void Update(float dt, const Level& level) override
+    {
+        // --- movement input ---
+        vx = 0.0f;
+
+        if (GetAsyncKeyState(VK_LEFT) & 0x8000)
+        {
+            vx = -moveSpeed;
+            direction = -1;
+        }
+        if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+        {
+            vx = moveSpeed;
+            direction = 1;
+        }
+
+        // --- jump ---
+        if ((GetAsyncKeyState(VK_SPACE) & 0x8000) && onGround)
+        {
+            vy = jumpSpeed;
+            onGround = false;
+        }
+
+        // --- shoot (Z) ---
+        shootCooldown -= dt;
+        if (shootCooldown < 0.0f)
+            shootCooldown = 0.0f;
+
+        if ((GetAsyncKeyState(0x5A) & 0x8000) && shootCooldown <= 0.0f)
+        {
+            FireBullet();
+            shootCooldown = 0.25f; // 4 shots per second
+        }
+
+        // physics
+        ApplyGravity(dt);
+        MoveAndCollide(dt, level);
+    }
+
+    virtual void Draw(float camX) const override
+    {
+        unsigned int col = MakeColor(255, 200, 50);
+        int sx = (int)(x - camX);
+        int sy = (int)y;
+        DrawTileRect(sx, sy, w, h, col);
+    }
+
+    void CheckHazards(const Level& level)
+    {
+        int left = (int)x;
+        int right = (int)x + w - 1;
+        int top = (int)y;
+        int bottom = (int)y + h - 1;
+
+        int tx0 = left / TILE_SIZE;
+        int tx1 = right / TILE_SIZE;
+        int ty0 = top / TILE_SIZE;
+        int ty1 = bottom / TILE_SIZE;
+
+        for (int ty = ty0; ty <= ty1; ++ty)
+        {
+            for (int tx = tx0; tx <= tx1; ++tx)
+            {
+                if (level.IsHazard(tx, ty))
+                {
+                    Reset();
+                    return;
+                }
+            }
+        }
+    }
+
+    // ---------- particle helpers called by bullets / player ----------
+    void SpawnMuzzleParticles(float px, float py) const
+    {
+        SpawnParticles(px, py, 8, MakeColor(255, 220, 100), 0.2f, 60.0f, 120.0f);
+    }
+
+    void SpawnHitParticles(float px, float py) const
+    {
+        SpawnParticles(px, py, 16, MakeColor(255, 180, 60), 0.4f, 40.0f, 160.0f);
+    }
+
+private:
+    float shootCooldown;
+
+    void FireBullet()
+    {
+        // find free bullet
+        for (int i = 0; i < MAX_BULLETS; ++i)
+        {
+            if (!g_xbullets[i].alive)
+            {
+                float bx = x + w * 0.5f;
+                float by = y + h * 0.5f;
+                g_xbullets[i].Fire(bx, by, direction);
+
+                // muzzle flash
+                SpawnMuzzleParticles(bx, by);
+                break;
+            }
+        }
+    }
+
+    // generic particle spawning around a point
+    void SpawnParticles(float px, float py, int count,
+        unsigned int baseColor,
+        float life,
+        float minSpeed,
+        float maxSpeed) const
+    {
+        for (int n = 0; n < count; ++n)
+        {
+            Particle* p = AllocParticle();
+            if (!p) return;
+
+            float angle = (float)(rand() % 360) * 3.14159265f / 180.0f;
+            float t = (rand() / (float)RAND_MAX); // 0..1
+            float speed = minSpeed + (maxSpeed - minSpeed) * t;
+
+            float pvx = cosf(angle) * speed;
+            float pvy = sinf(angle) * speed - 40.0f; // a bit upwards
+
+            // you can slightly randomize color if you want
+
+            p->Init(px, py, pvx, pvy, life, baseColor);
+        }
+    }
+};
+
+
+// ---------------------------------------------------------
+// Enemie (enemy character)
+// ---------------------------------------------------------
+class Enemie : public Character
+{
+public:
+    Enemie()
+    {
+        moveSpeed = 60.0f;
+        vx = -moveSpeed;
+        direction = -1;
+        maxHealth = 1;
+        health = 1;
+    }
+
+    void SetPatrolSpeed(float s)
+    {
+        moveSpeed = s;
+        vx = (direction >= 0) ? moveSpeed : -moveSpeed;
+    }
+
+    virtual void Update(float dt, const Level& level) override
+    {
+        ApplyGravity(dt);
+        MoveAndCollide(dt, level);
+
+        // If hit wall horizontally, MoveAndCollide will zero vx,
+        // so we flip direction there
+        if (vx == 0.0f)
+        {
+            direction = -direction;
+            vx = (direction >= 0) ? moveSpeed : -moveSpeed;
+        }
+    }
+
+    virtual void Draw(float camX) const override
+    {
+        if (!alive) return;
+        unsigned int col = MakeColor(200, 50, 255);
+        int sx = (int)(x - camX);
+        int sy = (int)y;
+        DrawTileRect(sx, sy, w, h, col);
+    }
+};
+
+extern Level g_levelObj;
+extern xPlayer g_playerObj;
+extern std::vector<Enemie> g_enemiesObj;
+
+void xUpdateBullets(float dt)
+{
+    for (int i = 0; i < MAX_BULLETS; ++i)
+    {
+        xBullet& b = g_xbullets[i];
+        if (!b.alive) continue;
+
+        b.x += b.vx * dt;
+
+        // out of level bounds
+        if (b.x < 0.0f || b.x > LEVEL_W * TILE_SIZE)
+        {
+            b.Kill();
+            continue;
+        }
+
+        // tile collision
+        int tx = (int)(b.x / TILE_SIZE);
+        int ty = (int)(b.y / TILE_SIZE);
+
+        if (g_levelObj.IsSolid(tx, ty))
+        {
+            float hx = b.x;
+            float hy = b.y;
+            b.Kill();
+            g_playerObj.SpawnHitParticles(hx, hy);
+            continue;
+        }
+
+        // enemy collision
+        for (Enemie& e : g_enemiesObj)
+        {
+            if (!e.IsAlive()) continue;
+
+            if (RectsOverlap(
+                b.x, b.y, xBullet::WIDTH, xBullet::HEIGHT,
+                e.x, e.y, e.w, e.h))
+            {
+                float hx = e.x + e.w * 0.5f;
+                float hy = e.y + e.h * 0.5f;
+
+                b.Kill();
+                e.Kill();
+                g_playerObj.SpawnHitParticles(hx, hy);
+                break;
+            }
+        }
+    }
+}
+
+void DrawBullets(float camX)
+{
+    for (int i = 0; i < MAX_BULLETS; ++i)
+        g_xbullets[i].Draw(camX);
+}
+
+void UpdateParticles(float dt)
+{
+    for (int i = 0; i < MAX_PARTICLES; ++i)
+        g_particles[i].Update(dt, g_levelObj);
+}
+
+void DrawParticles(float camX)
+{
+    for (int i = 0; i < MAX_PARTICLES; ++i)
+        g_particles[i].Draw(camX);
+}
+
+Level  g_levelObj;
+xPlayer g_playerObj;
+std::vector<Enemie> g_enemiesObj;
+float  g_camXObj = 0.0f;
+
+void InitEnemiesObj()
+{
+    g_enemiesObj.clear();
+
+    Enemie e0;
+    e0.x = 12 * TILE_SIZE;
+    e0.y = 11 * TILE_SIZE;
+    e0.SetPatrolSpeed(60.0f);
+    g_enemiesObj.push_back(e0);
+
+    Enemie e1;
+    e1.x = 27 * TILE_SIZE;
+    e1.y = 9 * TILE_SIZE;
+    e1.SetPatrolSpeed(60.0f);
+    g_enemiesObj.push_back(e1);
+
+    Enemie e2;
+    e2.x = 65 * TILE_SIZE;
+    e2.y = 10 * TILE_SIZE;
+    e2.SetPatrolSpeed(80.0f);
+    g_enemiesObj.push_back(e2);
+}
+
+
+void InitGame_OOP()
+{
+    g_levelObj.Allocate();
+    g_levelObj.BuildLevel3();
+    g_playerObj.Reset();
+    InitEnemiesObj();
+
+    for (int i = 0; i < MAX_BULLETS; ++i)
+        g_xbullets[i].alive = false;
+
+    for (int i = 0; i < MAX_PARTICLES; ++i)
+        g_particles[i].Kill(); // or alive=false
+
+}
+
+void UpdateGame_OOP(float dt)
+{
+    g_playerObj.Update(dt, g_levelObj);
+    g_playerObj.CheckHazards(g_levelObj);
+
+    for (auto& e : g_enemiesObj)
+        e.Update(dt, g_levelObj);
+    
+    xUpdateBullets(dt);
+    UpdateParticles(dt);
+
+    // Simple camera
+    g_camXObj = g_playerObj.x + g_playerObj.w / 2 - SCREEN_W / 2;
+    if (g_camXObj < 0) g_camXObj = 0;
+    float maxCamX = (float)(LEVEL_W * TILE_SIZE - SCREEN_W);
+    if (g_camXObj > maxCamX) g_camXObj = maxCamX;
+
+    // collisions player <-> enemies
+    for (auto& e : g_enemiesObj)
+    {
+        if (e.IsAlive() && g_playerObj.IsAlive() && g_playerObj.Intersects(e))
+        {
+            g_playerObj.Reset(); // simple: player dies
+            break;
+        }
+    }
+}
+
+void RenderGame_OOP()
+{
+    ClearScreen(MakeColor(50, 50, 80));
+    g_levelObj.Draw(g_camXObj);
+
+    for (const auto& e : g_enemiesObj)
+        e.Draw(g_camXObj);
+
+    DrawBullets(g_camX);
+    DrawParticles(g_camX);
+
+    g_playerObj.Draw(g_camXObj);
+
+    // UI text etc.
+    DrawAsciiText("Hello, Skybound (OOP)!", 20, 40, 255, 255, 255, 0.95f);
+}
+//////////////////////////////////////////////////////////////////////////////////////
+
+
 void InitGame()
 {
     BuildLevel_3();
@@ -1261,7 +2212,7 @@ int WINAPI WinMain_old(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         return 0;
 
     InitGame();
-
+    InitGame_OOP();
 
     InitFreeType("d:\\HelloCoder2025\\assets\\NotoSansJP-Regular.ttf", 18);
     PreloadAsciiGlyphs();
@@ -1287,23 +2238,25 @@ int WINAPI WinMain_old(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
         if (dt > 0.05f) dt = 0.05f; // ограничим шаг
         prevTime = currTime;
 
-        // логика
-        MovePlayer(dt);
-        UpdateEnemies(dt);
-        HandleShooting(dt);
-        UpdateBullets(dt);
-        UpdateCamera();
+        UpdateGame_OOP(dt);
+        RenderGame_OOP();
+        //// логика
+        //MovePlayer(dt);
+        //UpdateEnemies(dt);
+        //HandleShooting(dt);
+        //UpdateBullets(dt);
+        //UpdateCamera();
 
-        // рендер
-        ClearScreen(MakeColor(50, 50, 80)); // фон
-        DrawLevel();
-        DrawEnemies();
-        DrawBullets();
-        DrawPlayer();
+        //// рендер
+        //ClearScreen(MakeColor(50, 50, 80)); // фон
+        //DrawLevel();
+        //DrawEnemies();
+        //DrawBullets();
+        //DrawPlayer();
 
-        DrawGlyph(0x2740, 200, 80, 255, 0, 0, 0.9f);
+        //DrawGlyph(0x2740, 200, 80, 255, 0, 0, 0.9f);
 
-        DrawAsciiText("Hello, Skybound!", 20, 40, 255, 255, 255, 0.95f);
+        //DrawAsciiText("Hello, Skybound!", 20, 40, 255, 255, 255, 0.95f);
         //DrawPNG(TestImage, 100, 100, 2.0f, 0.8f);
 
         // вывод на экран
