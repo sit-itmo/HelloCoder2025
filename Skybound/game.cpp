@@ -211,6 +211,7 @@ int DrawGlyph(uint32_t codepoint, int penX, int baselineY,
 
             int sx = x0 + x;
             int sy = y0 + y;
+          
             BlendPixel(sx, sy, r, g, b, alpha);
         }
     }
@@ -1269,10 +1270,10 @@ private:
     TileType _type;
 };
 
-class Level
+class xLevel
 {
 public:
-    Level()
+    xLevel()
         : _width(LEVEL_W)
         , _height(LEVEL_H)
         , _tiles(_width* _height)
@@ -1282,10 +1283,10 @@ public:
 
     void Allocate()
     {
-        _width = LEVEL_W;
-        _height = LEVEL_H;
-        _tiles.resize(_width * _height);
-        Clear();
+        //_width = LEVEL_W;
+        //_height = LEVEL_H;
+        //_tiles.resize(_width * _height);
+        //Clear();
     }
     int  GetWidth()  const { return _width; }
     int  GetHeight() const { return _height; }
@@ -1330,7 +1331,7 @@ public:
             t.SetType(TileType::Empty);
     }
 
-    // ===== Level builders, based on your BuildLevel_1/2/3 =====
+    // ===== xLevel builders, based on your BuildLevel_1/2/3 =====
     void BuildLevel1()
     {
         Clear();
@@ -1522,7 +1523,7 @@ public:
 
     virtual ~Entity() {}
 
-    virtual void Update(float dt, const Level& level) = 0;
+    virtual void Update(float dt, const xLevel& level) = 0;
     virtual void Draw(float camX) const = 0;
 
     bool IsAlive() const { return alive; }
@@ -1572,7 +1573,7 @@ public:
         alive = true;
     }
 
-    virtual void Update(float dt, const Level&) override
+    virtual void Update(float dt, const xLevel&) override
     {
         if (!alive) return;
 
@@ -1709,7 +1710,7 @@ public:
         vy += GRAVITY * dt;
     }
 
-    void MoveAndCollide(float dt, const Level& level)
+    void MoveAndCollide(float dt, const xLevel& level)
     {
         // horizontal
         float newX = x + vx * dt;
@@ -1851,7 +1852,7 @@ public:
         shootCooldown = 0.0f;
     }
 
-    virtual void Update(float dt, const Level& level) override
+    virtual void Update(float dt, const xLevel& level) override
     {
         // --- movement input ---
         vx = 0.0f;
@@ -1898,7 +1899,7 @@ public:
         DrawTileRect(sx, sy, w, h, col);
     }
 
-    void CheckHazards(const Level& level)
+    void CheckHazards(const xLevel& level)
     {
         int left = (int)x;
         int right = (int)x + w - 1;
@@ -2003,7 +2004,7 @@ public:
         vx = (direction >= 0) ? moveSpeed : -moveSpeed;
     }
 
-    virtual void Update(float dt, const Level& level) override
+    virtual void Update(float dt, const xLevel& level) override
     {
         ApplyGravity(dt);
         MoveAndCollide(dt, level);
@@ -2027,7 +2028,7 @@ public:
     }
 };
 
-extern Level g_levelObj;
+extern xLevel g_levelObj;
 extern xPlayer g_playerObj;
 extern std::vector<Enemie> g_enemiesObj;
 
@@ -2099,7 +2100,7 @@ void DrawParticles(float camX)
         g_particles[i].Draw(camX);
 }
 
-Level  g_levelObj;
+xLevel  g_levelObj;
 xPlayer g_playerObj;
 std::vector<Enemie> g_enemiesObj;
 float  g_camXObj = 0.0f;

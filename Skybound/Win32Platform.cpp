@@ -5,12 +5,12 @@
 
 #include "Skybound.h"
 
-class Win32Platform : public Platform
+class sWin32Platform : public sPlatform
 {
 private:
-    Size2D RenderSize;
+    sSize2D RenderSize;
     HWND   hWnd = NULL;
-    Picture BackBuffer;
+    sPicture BackBuffer;
     BITMAPINFO Bmi = { 0 };
 
     bool SetupConsole();
@@ -21,21 +21,21 @@ private:
 
 public:
 
-    bool Setup(const sString& caption, const Size2D& size);
+    bool Setup(const sString& caption, const sSize2D& size);
     void Loop();
     bool GetKeyState(KeyCode code);
 
-    ~Win32Platform();
+    ~sWin32Platform();
 
 };
 
-Platform* Win32PlatformBuilder::Build()
+sPlatform* sWin32PlatformBuilder::Build()
 {
-    return new Win32Platform();
+    return new sWin32Platform();
 }
 
 #ifdef _DEBUG
-bool Win32Platform::SetupConsole()
+bool sWin32Platform::SetupConsole()
 {
     // Try to attach to parent console first; if none, create a new one.
     if (!AttachConsole(ATTACH_PARENT_PROCESS))
@@ -83,18 +83,18 @@ bool Win32Platform::SetupConsole()
         return true;
 }
 #else
-void Win32Platform::SetupConsole(void)
+void sWin32Platform::SetupConsole(void)
 {
 
 }
 #endif
 
-Win32Platform::~Win32Platform()
+sWin32Platform::~sWin32Platform()
 {
     Reset();
 }
 
-bool Win32Platform::InitWindow(const sString& caption)
+bool sWin32Platform::InitWindow(const sString& caption)
 {
     HINSTANCE hInstance = GetModuleHandle(NULL);
 
@@ -135,7 +135,7 @@ bool Win32Platform::InitWindow(const sString& caption)
     return true;
 }
 
-bool Win32Platform::InitGraphics()
+bool sWin32Platform::InitGraphics()
 {
     BackBuffer.Resize(RenderSize);
 
@@ -149,7 +149,7 @@ bool Win32Platform::InitGraphics()
     return true;
 }
 
-LRESULT CALLBACK Win32Platform::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK sWin32Platform::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg)
     {
@@ -168,12 +168,12 @@ LRESULT CALLBACK Win32Platform::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPAR
     return DefWindowProc(hWnd, msg, wParam, lParam);
 }
 
-void Win32Platform::Reset()
+void sWin32Platform::Reset()
 {
 
 }
 
-bool Win32Platform::Setup(const sString& caption, const Size2D& size)
+bool sWin32Platform::Setup(const sString& caption, const sSize2D& size)
 {
     Reset();
     RenderSize = size;
@@ -182,7 +182,7 @@ bool Win32Platform::Setup(const sString& caption, const Size2D& size)
     return true;
 }
 
-void Win32Platform::Loop()
+void sWin32Platform::Loop()
 {
     DWORD prevTime = GetTickCount();
     bool g_running = true;
@@ -205,6 +205,18 @@ void Win32Platform::Loop()
         if (dt > 0.05f) dt = 0.05f; // ограничим шаг
         prevTime = currTime;
 
+
+        for (auto& a : Apps)
+        {
+            a->Update(currTime, prevTime);
+        }
+
+        for (auto& a : Apps)
+        {
+            a->Render(&BackBuffer);
+        }
+
+
         // вывод на экран
         HDC hdc = GetDC(hWnd);
         StretchDIBits(
@@ -222,7 +234,7 @@ void Win32Platform::Loop()
 
 }
 
-bool Win32Platform::GetKeyState(KeyCode code)
+bool sWin32Platform::GetKeyState(KeyCode code)
 {
     switch (code)
     {

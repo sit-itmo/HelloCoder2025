@@ -8,7 +8,7 @@
 typedef unsigned int sColor; // 0xAARRGGBB
 
 // Helper: alpha blend src over dst (both 0xAARRGGBB)
-sColor Picture::AlphaBlend(sColor dst, sColor src)
+sColor sPicture::AlphaBlend(sColor dst, sColor src)
 {
     unsigned int srcA = (src >> 24) & 0xFF;
     if (srcA == 0)   return dst; // fully transparent
@@ -34,13 +34,13 @@ sColor Picture::AlphaBlend(sColor dst, sColor src)
     return (outA << 24) | (outR << 16) | (outG << 8) | outB;
 }
 
-Picture::Picture()
+sPicture::sPicture()
     : _Size(0, 0)
     , pPixels(nullptr)
 {
 }
 
-Picture::Picture(Size2D size)
+sPicture::sPicture(sSize2D size)
     : _Size(size)
 {
     if (_Size.W > 0 && _Size.H > 0)
@@ -49,12 +49,12 @@ Picture::Picture(Size2D size)
         pPixels = nullptr;
 }
 
-Picture::Picture(unsigned int w, unsigned int h)
-    : Picture(Size2D(w, h))
+sPicture::sPicture(unsigned int w, unsigned int h)
+    : sPicture(sSize2D(w, h))
 {
 }
 
-Picture::Picture(const Picture& other)
+sPicture::sPicture(const sPicture& other)
     : _Size(other._Size)
 {
     if (other.pPixels)
@@ -68,15 +68,15 @@ Picture::Picture(const Picture& other)
     }
 }
 
-Picture::Picture(Picture&& other) noexcept
+sPicture::sPicture(sPicture&& other) noexcept
     : _Size(other._Size)
     , pPixels(other.pPixels)
 {
-    other._Size = Size2D(0, 0);
+    other._Size = sSize2D(0, 0);
     other.pPixels = nullptr;
 }
 
-Picture& Picture::operator=(const Picture& other)
+sPicture& sPicture::operator=(const sPicture& other)
 {
     if (this == &other)
         return *this;
@@ -105,7 +105,7 @@ Picture& Picture::operator=(const Picture& other)
     return *this;
 }
 
-Picture& Picture::operator=(Picture&& other) noexcept
+sPicture& sPicture::operator=(sPicture&& other) noexcept
 {
     if (this == &other)
         return *this;
@@ -115,13 +115,13 @@ Picture& Picture::operator=(Picture&& other) noexcept
     _Size = other._Size;
     pPixels = other.pPixels;
 
-    other._Size = Size2D(0, 0);
+    other._Size = sSize2D(0, 0);
     other.pPixels = nullptr;
 
     return *this;
 }
 
-Picture::~Picture()
+sPicture::~sPicture()
 {
     if (pPixels != nullptr)
     {
@@ -130,7 +130,7 @@ Picture::~Picture()
     pPixels = nullptr;
 }
 
-void Picture::Resize(Size2D newSize)
+void sPicture::Resize(sSize2D newSize)
 {
     if (newSize == _Size)
         return;
@@ -167,7 +167,7 @@ void Picture::Resize(Size2D newSize)
     _Size = newSize;
 }
 
-void Picture::Clear(sColor color)
+void sPicture::Clear(sColor color)
 {
     if (!pPixels) return;
 
@@ -186,9 +186,9 @@ void Picture::Clear(sColor color)
 // Scaling is done with nearest-neighbor sampling.
 // Colors are blended as src over dst, using 0xAARRGGBB format.
 // -------------------------------------------------------------
-void Picture::DrawPicture(const Picture& src,
-    const Pos2D& srcPos, const Size2D& srcSize,
-    const Pos2D& dstPos, const Size2D& dstSize)
+void sPicture::DrawPicture(const sPicture& src,
+    const sPos2D& srcPos, const sSize2D& srcSize,
+    const sPos2D& dstPos, const sSize2D& dstSize)
 {
     if (!pPixels || !src.pPixels) return;
     if (srcSize.W == 0 || srcSize.H == 0) return;
@@ -242,4 +242,67 @@ void Picture::DrawPicture(const Picture& src,
         }
     }
 }
+
+#include <png.h>
+bool sPicture::LoadPNG(const char* p_path)
+{
+    FILE* fp = fopen(p_path, "rb");
+    if (!fp) return false;
+
+    png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+    if (!png) return false;
+
+    png_infop info = png_create_info_struct(png);
+    if (!info) return false;
+
+    if (setjmp(png_jmpbuf(png))) return false;
+
+    png_init_io(png, fp);
+    png_read_info(png, info);
+
+    sSize2D pic_size = { png_get_image_width(png, info), png_get_image_height(png, info) };
+    Resize(pic_size);
+
+    png_byte color_type = png_get_color_type(png, info);
+    png_byte bit_depth = png_get_bit_depth(png, info);
+
+    // преобразуем к RGBA 8-bit
+    if (bit_depth == 16) png_set_strip_16(png);
+    if (color_type == PNG_COLOR_TYPE_PALETTE)
+        png_set_palette_to_rgb(png);
+
+    if (color_type == PNG_COLOR_TYPE_GRAY && bit_depth < 8)
+        png_set_expand_gray_1_2_4_to_8(png);
+
+    if (png_get_valid(png, info, PNG_INFO_tRNS))
+        png_set_tRNS_to_alpha(png);
+
+    if (color_type == PNG_COLOR_TYPE_RGB ||
+        color_type == PNG_COLOR_TYPE_GRAY ||
+        color_type == PNG_COLOR_TYPE_PALETTE)
+    {
+        png_set_filler(png, 0xFF, PNG_FILLER_AFTER); // добавляем альфа-канал
+    }
+
+    if (color_type == PNG_COLOR_TYPE_GRAY ||
+        color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
+    {
+        png_set_gray_to_rgb(png);
+    }
+
+    png_read_update_info(png, info);
+
+    std::vector<png_bytep> rows(_Size.H);
+
+    for (int y = 0; y < _Size.H; y++)
+    {
+        rows[y] = (png_bytep)((png_bytep)pPixels + y * _Size.W * 4);
+    }
+    png_read_image(png, rows.data());
+    png_destroy_read_struct(&png, &info, NULL);
+    fclose(fp);
+    return true;
+}
+
+
 

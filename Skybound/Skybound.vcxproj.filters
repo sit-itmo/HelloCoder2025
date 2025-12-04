@@ -8,6 +8,9 @@
     <ClCompile Include="Picture.cpp" />
     <ClCompile Include="Logging.cpp" />
     <ClCompile Include="DumpExample.cpp" />
+    <ClCompile Include="Font.cpp" />
+    <ClCompile Include="AssetManager.cpp" />
+    <ClCompile Include="Gameplay.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Skybound.h" />

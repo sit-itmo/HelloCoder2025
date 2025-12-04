@@ -1,5 +1,8 @@
 #include "Skybound.h"
 #include <stdarg.h>
+#include <sstream>
+#include <string>
+#include <iostream>
 
 void Logging::LogMessageEx(const char* p_file, int line, const char* p_module, enum Kind kind, const char* p_fmt, ...)
 {
@@ -17,7 +20,7 @@ const char* GetJustFileName(const char* p_text)
     return p_res == NULL ? p_text : p_res + 1;
 }
 
-void Logging::LogMessage(const char* p_file, int line, const char* p_module, enum Kind kind, const char* p_text)
+void Logging::LogMessagePrefix(const char* p_file, int line, const char* p_module, enum Kind kind)
 {
     char buf[Logging::MaxMessageSize];
 
@@ -75,8 +78,18 @@ void Logging::LogMessage(const char* p_file, int line, const char* p_module, enu
         PutText(ANSI::reset().c_str());
         PutText("         ");
     }
+}
 
-    PutText(p_text);
+void Logging::LogMessage(const char* p_file, int line, const char* p_module, enum Kind kind, const char* p_text)
+{
+    std::stringstream ss(p_text);
+    std::string _line;
+
+    while (std::getline(ss, _line))
+    {
+        LogMessagePrefix(p_file, line, p_module, kind);
+        PutText(_line.c_str());
+    }
 }
 
 void Logging::PutText(const char* p_text)
@@ -120,7 +133,31 @@ bool Logging::Setup()
     return true;
 }
 
+void Logging::Demo()
+{
+    SKY_PRINTLN("Testing log system...");
+    SKY_PRINT("[");
+    for (int i = 0; i < 10; i++)
+    {
+        SKY_PRINT_EX("%d, ", i);
+    }
+    SKY_PRINT("]");
 
+    SKY_DEBUG("This is a debug message");
+    SKY_DEBUG_EX("Debug with formatting %d, 0x%x!", 10, 10);
+    SKY_ERROR("This is ERROR message");
+    SKY_ERROR_EX("This is ERROR message with formatting (%d)", ENOMEM);
+    SKY_TRACE("Trace message");
+    SKY_TRACE_EX("Trace message again format 0x%llx", __rdtsc());
+    SKY_WARNING("Very important warning!");
+    SKY_WARNING("Warining with %d %s formatting keep as is!");
+    SKY_WARNING_EX("Very important warning %s!", "yesyes");
+
+    for (int i = 0; i < 10; i++)
+    {
+        SKY_ASSERT(i < 9);
+    }
+}
 
 
 
