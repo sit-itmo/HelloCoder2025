@@ -16,5 +16,6 @@
     <ClInclude Include="Skybound.h" />
     <ClInclude Include="Types2D.h" />
     <ClInclude Include="Formatting.h" />
+    <ClInclude Include="Color.h" />
   </ItemGroup>
 </Project>

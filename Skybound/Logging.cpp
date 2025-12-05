@@ -39,7 +39,7 @@ void Logging::LogMessagePrefix(const char* p_file, int line, const char* p_modul
         }
         if (_PrintTime)
         {
-            snprintf(buf, sizeof(buf), "%8lld ", __rdtsc());
+            snprintf(buf, sizeof(buf), "%f ", Skybound::getSingleton()->GetPlatform()->GetTime());
             PutText(buf);
         }
         if (_PrintModule)
@@ -53,31 +53,30 @@ void Logging::LogMessagePrefix(const char* p_file, int line, const char* p_modul
     {
         PutText(ANSI::makeStyle(ANSI::Color::Red).c_str());
         PutText("![ERROR]!");
-        PutText(ANSI::reset().c_str());
     }
     else if (kind == Kind_WARNI)
     {
         PutText(ANSI::makeStyle(ANSI::Color::Yellow).c_str());
         PutText("<WARNING>");
-        PutText(ANSI::reset().c_str());
     }
     else if (kind == Kind_DEBUG)
     {
         PutText(ANSI::makeStyle(ANSI::Color::Magenta).c_str());
         PutText("--DEBUG--");
-        PutText(ANSI::reset().c_str());
     }
     else if (kind == Kind_TRACE)
     {
         PutText(ANSI::makeStyle(ANSI::Color::Cyan).c_str());
         PutText("--TRACE--");
-        PutText(ANSI::reset().c_str());
     }
     else if (kind == Kind_PLINE)
     {
         PutText(ANSI::reset().c_str());
         PutText("         ");
     }
+    PutText(ANSI::reset().c_str());
+    PutText(" ");
+
 }
 
 void Logging::LogMessage(const char* p_file, int line, const char* p_module, enum Kind kind, const char* p_text)

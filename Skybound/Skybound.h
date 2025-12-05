@@ -14,114 +14,7 @@ typedef std::string sString;
 //typedef unsigned int sColor;
 
 
-typedef unsigned int sColor; // assumed 32-bit: 0xAARRGGBB
-#if 0
-struct sColorEx
-{
-    union
-    {
-        sColor value;       // full 32-bit color value
-
-        struct
-        {
-            // NOTE: layout assumes 0xAARRGGBB in memory on a little-endian machine
-            uint8_t b;      // Blue
-            uint8_t g;      // Green
-            uint8_t r;      // Red
-            uint8_t a;      // Alpha
-        } comp;
-    };
-
-    // ----- Constructors -----
-
-    sColorEx() : value(0) {} // default: transparent black
-
-    sColorEx(uint8_t r, uint8_t g, uint8_t b, uint8_t a = 255)
-    {
-        comp.r = r;
-        comp.g = g;
-        comp.b = b;
-        comp.a = a;
-    }
-
-    sColorEx(sColor v)
-    {
-        value = v;
-    }
-
-    // ----- Cast operators -----
-
-    // Implicit cast to sColor (lets you pass sColorEx where sColor is expected)
-    operator sColor() const
-    {
-        return value;
-    }
-
-    // Explicit cast to unsigned int (same as sColor)
-    explicit operator unsigned int() const
-    {
-        return value;
-    }
-
-    // Assignment from sColor
-    sColorEx& operator=(sColor v)
-    {
-        value = v;
-        return *this;
-    }
-
-    // ----- Convenience getters/setters for components -----
-
-    uint8_t R() const { return comp.r; }
-    uint8_t G() const { return comp.g; }
-    uint8_t B() const { return comp.b; }
-    uint8_t A() const { return comp.a; }
-
-    void SetR(uint8_t r_) { comp.r = r_; }
-    void SetG(uint8_t g_) { comp.g = g_; }
-    void SetB(uint8_t b_) { comp.b = b_; }
-    void SetA(uint8_t a_) { comp.a = a_; }
-
-    // ----- Alpha blend -----
-    //
-    // This color is taken as "source" (with alpha),
-    // 'dst' is the background color.
-    //
-    // Result = src OVER dst:
-    //   out = src * a + dst * (1 - a)
-    //
-    sColorEx Blend(const sColorEx& dst) const
-    {
-        // normalize alpha to [0..255]
-        uint32_t a = comp.a;
-        uint32_t na = 255u - a;
-
-        sColorEx out;
-        out.comp.a = 255; // usually result alpha is fully opaque, or a + dst.a*na/255 if you want
-
-        out.comp.r = static_cast<uint8_t>(
-            (comp.r * a + dst.comp.r * na) / 255u
-            );
-        out.comp.g = static_cast<uint8_t>(
-            (comp.g * a + dst.comp.g * na) / 255u
-            );
-        out.comp.b = static_cast<uint8_t>(
-            (comp.b * a + dst.comp.b * na) / 255u
-            );
-
-        return out;
-    }
-
-    // Static version using raw sColor values
-    static sColor Blend(sColor src, sColor dst)
-    {
-        sColorEx s(src);
-        sColorEx d(dst);
-        sColorEx o = s.Blend(d);
-        return o.value;
-    }
-};
-#endif
+#include "Color.h"
 
 #define SKYBOUND_DEFAULT_LOG_FILE "skybound.log"
 
@@ -203,8 +96,6 @@ private:
 
 #include "Types2D.h"
 
-typedef unsigned int sColor;
-
 class sGameplay;
 
 class sAsset
@@ -225,9 +116,6 @@ class sPicture : public sAsset
 private:
     sSize2D _Size;    
     sColor* pPixels;  
-
-public:
-    static sColor AlphaBlend(sColor dst, sColor src);
 
 public:
     sPicture();
@@ -299,6 +187,7 @@ public:
     virtual bool Setup(const sString& caption, const sSize2D& size) = 0;
     virtual void Loop()=0;
     virtual bool GetKeyState(KeyCode code)=0;
+    virtual float GetTime()=0;
 
     void AddApplication(IApplication* p_app);
     void DelApplication(IApplication* p_app);

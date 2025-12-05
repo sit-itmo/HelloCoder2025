@@ -23,6 +23,7 @@ public:
 
     bool Setup(const sString& caption, const sSize2D& size);
     void Loop();
+    float GetTime();
     bool GetKeyState(KeyCode code);
 
     ~sWin32Platform();
@@ -182,6 +183,11 @@ bool sWin32Platform::Setup(const sString& caption, const sSize2D& size)
     return true;
 }
 
+float sWin32Platform::GetTime()
+{
+    return GetTickCount() / 1000.0f;
+}
+
 void sWin32Platform::Loop()
 {
     DWORD prevTime = GetTickCount();
@@ -203,14 +209,14 @@ void sWin32Platform::Loop()
         DWORD currTime = GetTickCount();
         float dt = (currTime - prevTime) / 1000.0f;
         if (dt > 0.05f) dt = 0.05f; // ограничим шаг
-        prevTime = currTime;
-
 
         for (auto& a : Apps)
         {
-            a->Update(currTime, prevTime);
+            a->Update(currTime / 1000.0f, prevTime / 1000.0f);
         }
-
+        prevTime = currTime;
+        
+        BackBuffer.Clear();
         for (auto& a : Apps)
         {
             a->Render(&BackBuffer);

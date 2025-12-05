@@ -5,35 +5,6 @@
 #include <algorithm>   // std::fill, std::min
 #include <utility>     // std::swap
 
-typedef unsigned int sColor; // 0xAARRGGBB
-
-// Helper: alpha blend src over dst (both 0xAARRGGBB)
-sColor sPicture::AlphaBlend(sColor dst, sColor src)
-{
-    unsigned int srcA = (src >> 24) & 0xFF;
-    if (srcA == 0)   return dst; // fully transparent
-    if (srcA == 255) return src; // fully opaque
-
-    unsigned int dstA = (dst >> 24) & 0xFF;
-
-    unsigned int srcR = (src >> 16) & 0xFF;
-    unsigned int srcG = (src >> 8) & 0xFF;
-    unsigned int srcB = (src) & 0xFF;
-
-    unsigned int dstR = (dst >> 16) & 0xFF;
-    unsigned int dstG = (dst >> 8) & 0xFF;
-    unsigned int dstB = (dst) & 0xFF;
-
-    unsigned int invA = 255 - srcA;
-
-    unsigned int outA = srcA + (dstA * invA) / 255;
-    unsigned int outR = (srcR * srcA + dstR * invA) / 255;
-    unsigned int outG = (srcG * srcA + dstG * invA) / 255;
-    unsigned int outB = (srcB * srcA + dstB * invA) / 255;
-
-    return (outA << 24) | (outR << 16) | (outG << 8) | outB;
-}
-
 sPicture::sPicture()
     : _Size(0, 0)
     , pPixels(nullptr)
@@ -238,7 +209,7 @@ void sPicture::DrawPicture(const sPicture& src,
                 static_cast<unsigned int>(srcY));
 
             sColor& dstRef = pPixels[dstY * _Size.W + dstX];
-            dstRef = AlphaBlend(dstRef, srcColor);
+            dstRef = srcColor.Blend(dstRef);
         }
     }
 }
@@ -289,6 +260,9 @@ bool sPicture::LoadPNG(const char* p_path)
     {
         png_set_gray_to_rgb(png);
     }
+
+    // *** This is the key line: swap R and B so we get BGRA instead of RGBA ***
+    png_set_bgr(png);
 
     png_read_update_info(png, info);
 

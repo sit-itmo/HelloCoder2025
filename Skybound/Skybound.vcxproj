@@ -156,6 +156,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Color.h" />
     <ClInclude Include="Formatting.h" />
     <ClInclude Include="Skybound.h" />
     <ClInclude Include="Types2D.h" />
