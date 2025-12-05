@@ -11,6 +11,7 @@
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="AssetManager.cpp" />
     <ClCompile Include="Gameplay.cpp" />
+    <ClCompile Include="Levels.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Skybound.h" />

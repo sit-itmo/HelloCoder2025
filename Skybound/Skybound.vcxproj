@@ -141,6 +141,7 @@
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="game.cpp" />
     <ClCompile Include="Gameplay.cpp" />
+    <ClCompile Include="Levels.cpp" />
     <ClCompile Include="Logging.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Picture.cpp" />
