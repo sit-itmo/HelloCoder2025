@@ -212,7 +212,7 @@ void sWin32Platform::Loop()
 
         for (auto& a : Apps)
         {
-            a->Update(currTime / 1000.0f, prevTime / 1000.0f);
+            a->Update(currTime / 1000.0f, dt);
         }
         prevTime = currTime;
         

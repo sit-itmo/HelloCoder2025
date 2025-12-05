@@ -11,6 +11,11 @@ bool sGameplay::Init()
     p_level->SetupLevel();
     Skybound::getSingleton()->SetCurrentLevel(p_level);
     
+    _pPlayer = new SkyPlayer(3);
+    _pPlayer->Reset();
+    AddEntity(_pPlayer);
+
+
     return true;
 }
 
@@ -28,7 +33,29 @@ bool sGameplay::Update(sTime curTime, sTime delta)
             }
         }
     }
-    
+
+    for (int i = 0; i < MAX_LAYERS; i++)
+    {
+        bool dirty = true;
+        while (dirty)
+        {
+            dirty = false;
+            for (auto it = _Entities[i].begin(); it != _Entities[i].end(); ++it)
+            {
+                if (*it != nullptr)
+                {
+                    if ((*it)->NeedToDelete())
+                    {
+                        delete* it;
+                        _Entities[i].erase(it);
+                        dirty = true;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     return true;
 }
 
@@ -129,6 +156,11 @@ void SkyCharacterEntity::MoveAndCollide(float dt)
         bool collide = false;
         for (int ty = tyTop; ty <= tyBottom; ++ty)
         {
+            if (SKY_LEVEL()->IsHazard(txRight, ty))
+            {
+                Reset();
+                return;
+            }
             if (SKY_LEVEL()->IsSolid(txRight, ty))
             {
                 collide = true;
@@ -151,6 +183,11 @@ void SkyCharacterEntity::MoveAndCollide(float dt)
         bool collide = false;
         for (int ty = tyTop; ty <= tyBottom; ++ty)
         {
+            if (SKY_LEVEL()->IsHazard(txLeft, ty))
+            {
+                Reset();
+                return;
+            }
             if (SKY_LEVEL()->IsSolid(txLeft, ty))
             {
                 collide = true;
@@ -177,6 +214,11 @@ void SkyCharacterEntity::MoveAndCollide(float dt)
         bool collide = false;
         for (int tx = txLeft; tx <= txRight; ++tx)
         {
+            if (SKY_LEVEL()->IsHazard(tx, tyBottom))
+            {
+                Reset();
+                return;
+            }
             if (SKY_LEVEL()->IsSolid(tx, tyBottom))
             {
                 collide = true;
@@ -200,6 +242,11 @@ void SkyCharacterEntity::MoveAndCollide(float dt)
         bool collide = false;
         for (int tx = txLeft; tx <= txRight; ++tx)
         {
+            if (SKY_LEVEL()->IsHazard(tx, tyTop))
+            {
+                Reset();
+                return;
+            }
             if (SKY_LEVEL()->IsSolid(tx, tyTop))
             {
                 collide = true;
@@ -262,7 +309,7 @@ void SkyTile::Update(sTime curTime, sTime prevTime)
 }
 
 
-void SkyTile::DrawTileRect(sPicture* p_pic, sColor color)
+void SkyEntity::DrawTileRect(sPicture* p_pic, sColor color)
 {
     for (int y = (int)_Position.y; y < (int)_Position.y + _Size.H; ++y)
     {
@@ -347,3 +394,116 @@ const SkyTile* SkyLevel::GetTile(int tx, int ty) const
     }
     return p_res;
 }
+
+void SkyCharacterEntity::TakeDamage(int dmg)
+{
+    _Health -= dmg;
+    if (_Health <= 0)
+    {
+        _Health = 0;
+        _Enabled = false;
+    }
+}
+
+SkyPlayer::SkyPlayer(int health) 
+{
+    _Size = {32, 64};
+    _MaxHealth = _Health = health; 
+}
+
+void SkyPlayer::Reset()
+{
+    _Position = { 50.0f, 100.0f };
+    SkyCharacterEntity::Reset();
+}
+
+void SkyPlayer::FireBullet()
+{
+    SKY_GAMEPLAY()->AddEntity(new SkyBullet(_Position + _Size * 0.5f, _Direction), 2);
+}
+
+void SkyPlayer::Update(sTime curTime, sTime delta)
+{
+    // --- movement input ---
+    _Vector.x = 0.0f;
+
+    if (SKY_PLATFORM()->GetKeyState(sPlatform::KeyCode_Left))
+    {
+        _Vector.x = -_MoveSpeed;
+        _Direction = -1;
+    }
+    if (SKY_PLATFORM()->GetKeyState(sPlatform::KeyCode_Right))
+    {
+        _Vector.x = _MoveSpeed;
+        _Direction = 1;
+    }
+
+    // --- jump ---
+    if (SKY_PLATFORM()->GetKeyState(sPlatform::KeyCode_Space) && _OnGround)
+    {
+        _Vector.y = _JumpSpeed;
+        _OnGround = false;
+    }
+
+    // --- shoot (Z) ---
+    _ShootCooldown -= delta;
+    if (_ShootCooldown < 0.0f)
+        _ShootCooldown = 0.0f;
+
+    if (SKY_PLATFORM()->GetKeyState(sPlatform::KeyCode_Fire) && _ShootCooldown <= 0.0f)
+    {
+        FireBullet();
+        _ShootCooldown = 0.25f; // 4 shots per second
+    }
+
+    // physics
+    ApplyGravity(delta);
+    MoveAndCollide(delta);
+    CheckHazards();
+}
+
+void SkyPlayer::Draw(sPicture* p_buffer)
+{
+    DrawTileRect(p_buffer, {255, 200, 50});
+}
+
+void SkyBullet::Fire(int dir)
+{
+    _Vector = { (dir >= 0) ? 400.0f : -400.0f, 0.0f };
+    _Enabled = true;
+}
+
+SkyBullet::SkyBullet(const sVec2D& pos, int direction)
+{
+    _Size = {8, 4};
+    _Position = pos;
+    Fire(direction);
+}
+
+void SkyBullet::Update(sTime curTime, sTime dt)
+{
+    _Position += _Vector * dt;
+
+    // out of level bounds
+    if (SKY_LEVEL()->CheckOutOfScreen(_Position))
+    {
+        Kill();
+        return;
+    }
+
+    // tile collision
+    sPos2D t = SKY_LEVEL()->GetTilePos(_Position);
+    if (SKY_LEVEL()->IsSolid(t.X, t.Y))
+    {
+        Kill();
+        return;
+    }
+
+    // Enemie.... Check intersect
+}
+
+void SkyBullet::Draw(sPicture* p_buffer)
+{
+   DrawTileRect(p_buffer, {255, 255, 255});
+}
+
