@@ -4,8 +4,8 @@ int current_frame = 0;
 
 bool sGameplay::Init()
 {
-    SKY_ASSETS()->addFont("UNICODE", "d:\\HelloCoder2025\\assets\\NotoSansJP-Regular.ttf", 18);
-    SKY_ASSETS()->addPicture("MAIN", "c:\\Users\\user\\Desktop\\full3.png");
+    SKY_ASSETS().addFont("UNICODE", "d:\\HelloCoder2025\\assets\\NotoSansJP-Regular.ttf", 18);
+    SKY_ASSETS().addPicture("MAIN", "c:\\Users\\user\\Desktop\\full3.png");
     
     SkyLevel *p_level = new SkyLevel_Level1();
     p_level->SetupLevel();
@@ -73,11 +73,11 @@ void sGameplay::Render(sPicture* p_buffer)
     }
 
 
-    sFont *p_font = Skybound::getSingleton()->GetAssets()->getFont("UNICODE");
-    sPicture *p_pic = Skybound::getSingleton()->GetAssets()->getPicture("MAIN");
+    sFont *p_font = SKY_ASSETS().getFont("UNICODE");
+    sPicture *p_pic = SKY_ASSETS().getPicture("MAIN");
     
     char buf[32] = { 0 };
-    snprintf(buf, sizeof(buf), "[%d]", ((int)Skybound::getSingleton()->GetPlatform()->GetTime()) % 5);
+    snprintf(buf, sizeof(buf), "[%d]", ((int)SKY_PLATFORM().GetTime()) % 5);
     p_font->PrintText(*p_buffer, sPos2D(50, 50), sColor(255, 0, 0), buf);
     p_buffer->DrawPicture(*p_pic, sPos2D(current_frame * 32, 0), sSize2D(32, 32), sPos2D(100, 100), sSize2D(32, 32));
 
@@ -355,8 +355,6 @@ SkyLevel::~SkyLevel()
 }
 
 
-
-
 //void* GetPointer()
 //{
 //    return 0x1121232;
@@ -375,7 +373,7 @@ void SkyLevel::AddTile(SkyTile* p_tile, int tx, int ty)
     {
         p_tile->Setup({ tx * (int)_SizeOfTile.W, ty * (int)_SizeOfTile.H }, _SizeOfTile);
         _pLevelMesh[ty * _SizeInTiles.W + tx] = p_tile;
-        SKY_GAMEPLAY()->AddEntity(p_tile, 0);
+        SKY_GAMEPLAY().AddEntity(p_tile, 0);
     }
     return;
 }
@@ -419,7 +417,7 @@ void SkyPlayer::Reset()
 
 void SkyPlayer::FireBullet()
 {
-    SKY_GAMEPLAY()->AddEntity(new SkyBullet(_Position + _Size * 0.5f, _Direction), 2);
+    SKY_GAMEPLAY().AddEntity(new SkyBullet(_Position + _Size * 0.5f, _Direction), 2);
 }
 
 void SkyPlayer::Update(sTime curTime, sTime delta)
@@ -427,19 +425,19 @@ void SkyPlayer::Update(sTime curTime, sTime delta)
     // --- movement input ---
     _Vector.x = 0.0f;
 
-    if (SKY_PLATFORM()->GetKeyState(sPlatform::KeyCode_Left))
+    if (SKY_PLATFORM().GetKeyState(sPlatform::KeyCode_Left))
     {
         _Vector.x = -_MoveSpeed;
         _Direction = -1;
     }
-    if (SKY_PLATFORM()->GetKeyState(sPlatform::KeyCode_Right))
+    if (SKY_PLATFORM().GetKeyState(sPlatform::KeyCode_Right))
     {
         _Vector.x = _MoveSpeed;
         _Direction = 1;
     }
 
     // --- jump ---
-    if (SKY_PLATFORM()->GetKeyState(sPlatform::KeyCode_Space) && _OnGround)
+    if (SKY_PLATFORM().GetKeyState(sPlatform::KeyCode_Space) && _OnGround)
     {
         _Vector.y = _JumpSpeed;
         _OnGround = false;
@@ -450,7 +448,7 @@ void SkyPlayer::Update(sTime curTime, sTime delta)
     if (_ShootCooldown < 0.0f)
         _ShootCooldown = 0.0f;
 
-    if (SKY_PLATFORM()->GetKeyState(sPlatform::KeyCode_Fire) && _ShootCooldown <= 0.0f)
+    if (SKY_PLATFORM().GetKeyState(sPlatform::KeyCode_Fire) && _ShootCooldown <= 0.0f)
     {
         FireBullet();
         _ShootCooldown = 0.25f; // 4 shots per second

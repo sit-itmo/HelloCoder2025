@@ -1,0 +1,28 @@
+ 
+	{ 
+		"ScreenSize": 
+		{ 
+			"W": 800, 
+			"H": 600
+		}, 
+		"FullScreen": false, 
+		"MainTileSize": 
+		{ 
+			"W": 32, 
+			"H": 32
+		}, 
+		"Level": 1, 
+		"WindowCaption": "", 
+		"AllowLogs": true, 
+		"LogSettings": 
+		{ 
+			"FlushAlways": false, 
+			"TraceEnabled": false, 
+			"PrintModule": true, 
+			"PrintFile": true, 
+			"PrintTime": true, 
+			"WriteConsole": true, 
+			"WriteFile": false, 
+			"LogFileName": "skybound.log"
+		}
+	}

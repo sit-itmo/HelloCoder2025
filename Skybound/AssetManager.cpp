@@ -1,17 +1,5 @@
 #include "Skybound.h"
 
-sAsset::~sAsset()
-{
-    RefsDel();
-    SKY_ASSERT(_Reference == 0);
-}
-
-void sAsset::RefsDel()
-{
-    SKY_ASSERT(_Reference != 0);
-    _Reference--;
-};
-
 sAssetManager::~sAssetManager()
 {
     std::map<sID, sFont*>::iterator fi;

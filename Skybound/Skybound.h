@@ -14,9 +14,14 @@ typedef std::string sString;
 //typedef unsigned int sColor;
 
 
-#include "Color.h"
 
 #define SKYBOUND_DEFAULT_LOG_FILE "skybound.log"
+#define SKYBOUND_SETTINGS_FILE "skybound.json"
+
+#include "Color.h"
+#include "Types2D.h"
+#include "Settings.h"
+#include "Formatting.h"
 
 struct Logging
 {
@@ -31,6 +36,8 @@ struct Logging
         Kind_WARNI
     };
 
+    inline void SetSettings(const sLogSettings& set) { _Settings = set; }
+    
     void PutText(const char* p_text);
     void LogMessage(const char* p_file, int line, const char* p_module, enum Kind kind, const char* p_text);
     void LogMessageEx(const char* p_file, int line, const char* p_module, enum Kind kind, const char* p_text, ...);
@@ -39,16 +46,10 @@ struct Logging
     static void Demo();
 
 private:
-    bool _FlushAlways = false;
-    bool _TraceEnabled = false;
-    bool _PrintModule = true;
-    bool _PrintFile = true;
-    bool _PrintTime = true;
     bool _Ready = false;
-    bool _WriteConsole = true;
-    bool _WriteFile = false;
     FILE* pLogFile = nullptr;
-   
+    sLogSettings _Settings;
+
     bool Setup();
 };
 
@@ -65,8 +66,8 @@ private:
 #endif
 
 #ifdef _DEBUG
-#define _SKY_MESSAGE(kind, a) { Skybound::getSingleton()->Log.LogMessage(__FILE__, __LINE__, SKY_MODULE, kind, a); }
-#define _SKY_MESSAGE_EX(kind, a, ...) { Skybound::getSingleton()->Log.LogMessageEx(__FILE__, __LINE__, SKY_MODULE, kind, a, ##__VA_ARGS__); }
+#define _SKY_MESSAGE(kind, a) { Skybound::getSingleton()->Log().LogMessage(__FILE__, __LINE__, SKY_MODULE, kind, a); }
+#define _SKY_MESSAGE_EX(kind, a, ...) { Skybound::getSingleton()->Log().LogMessageEx(__FILE__, __LINE__, SKY_MODULE, kind, a, ##__VA_ARGS__); }
 #else
 #define _SKY_MESSAGE(kind, a)         { }
 #define _SKY_MESSAGE_EX(kind, a, ...) { }
@@ -92,13 +93,9 @@ private:
 #define SKY_ASSERT(a) {}
 #endif
 
-#include "Formatting.h"
-
-#include "Types2D.h"
-
 class sGameplay;
 
-class sAsset
+class sRefControl
 {
 private:
     sU32 _Reference = 0;
@@ -107,11 +104,11 @@ public:
     inline sU32 Refs() const { return _Reference; };
     inline void RefsAdd() { _Reference++; };
     void RefsDel();
-    sAsset() { RefsAdd(); };
-    virtual ~sAsset();
+    sRefControl() { RefsAdd(); };
+    virtual ~sRefControl();
 };
 
-class sPicture : public sAsset
+class sPicture : public sRefControl
 {
 private:
     sSize2D _Size;    
@@ -193,226 +190,8 @@ public:
     void DelApplication(IApplication* p_app);
 };
 
-class SkyEntity
-{
-protected:
-    sVec2D  _Position;
-    sSize2D _Size;
-    bool    _Enabled;
-    bool    _NeedToDelete = false;
-
-    void DrawTileRect(sPicture* p_pic, sColor color);
-
-public:
-    inline bool NeedToDelete() const { return _NeedToDelete; }
-    inline bool Enabled() const { return _Enabled; }
-    inline const sVec2D& Position() const { return _Position; }
-    inline const sSize2D& Size() const { return _Size; }
-
-    SkyEntity() : _Position(), _Size(), _Enabled(true) {}
-
-    virtual ~SkyEntity() {}
-
-    virtual void Kill() { _Enabled = false; _NeedToDelete = true; };
-    virtual void Update(sTime curTime, sTime prevTime) = 0;
-    virtual void Draw(sPicture* p_buffer) = 0;
-    
-    bool Intersects(const sVec2D& otherPos, const sSize2D& otherSize) const;
-    bool Intersects(const SkyEntity& other) const;
-
-};
-
-class SkyActiveEntity : public SkyEntity
-{
-protected:
-    sVec2D  _Vector;
-    void DoMove(float dt);
-
-public:
-    inline bool IsMoving() const { return _Vector.x != 0.0f && _Vector.y != 0.0f; }
-    inline void Stop() { _Vector.x = 0.0f; _Vector.y = 0.0f; }
-    inline const sVec2D& Vector() const { return _Vector; }
-
-    SkyActiveEntity() : SkyEntity(), _Vector() {}
-
-    virtual ~SkyActiveEntity() {}
-
-};
-
-class SkyBullet : public SkyActiveEntity
-{
-protected:
-    void Fire(int dir);
-public:
-    SkyBullet(const sVec2D &pos, int direction);
-    void Update(sTime curTime, sTime prevTime);
-    void Draw(sPicture* p_buffer);
-};
-
-
-class SkyCharacterEntity : public SkyActiveEntity
-{
-protected:
-    int _Health = 0;
-    int _MaxHealth = 0;
-    bool _OnGround = false;
-    float _MoveSpeed = 200.0f;
-    float _JumpSpeed = -450.0f;
-    int   _Direction = 1; // 1 right, -1 left
-    float _ShootCooldown = 0.0f;
-
-    void ApplyGravity(float dt);
-    void MoveAndCollide(float dt);
-
-
-    void CheckHazards();
-
-public:
-
-    inline int Health() const { return _Health; }
-    inline int MaxHealth() const { return _MaxHealth; }
-    inline bool OnGround() const { return _OnGround; }
-    inline float MoveSpeed() const { return _MoveSpeed; }
-    inline float JumpSpeed() const { return _JumpSpeed; }
-    inline int   Direction() const { return _Direction; }
-    inline bool IsDead() const { return _Health <= 0; }
-
-    void TakeDamage(int dmg);
-
-    SkyCharacterEntity() : SkyActiveEntity() {}
-
-    virtual void Reset();
-    virtual ~SkyCharacterEntity() {}
-
-};
-
-class SkyTile : public SkyEntity
-{
-    friend class SkyLevel;
-
-private:
-    void Setup(sPos2D pos, sSize2D size);
-
-protected:
-    SkyTile() : SkyEntity() {}
-
-public:
-    ~SkyTile() {};
-    virtual void Update(sTime curTime, sTime delta);
-    virtual bool IsSolid() const=0;
-    virtual bool IsHazard() const=0;
-};
-
-class SkyEmptyTile : public SkyTile
-{
-public:
-    virtual void Update(sTime curTime, sTime delta) {}
-    virtual void Draw(sPicture* p_buffer) {}
-    virtual bool IsSolid() const { return false; }
-    virtual bool IsHazard() const { return false; }
-};
-
-class SkyGroundTile : public SkyTile
-{
-public:
-    virtual void Draw(sPicture* p_buffer);
-    virtual bool IsSolid() const { return true; }
-    virtual bool IsHazard() const { return false; }
-};
-
-class SkyDecorTile : public SkyTile
-{
-public:
-    virtual void Draw(sPicture* p_buffer);
-    virtual bool IsSolid() const { return false; }
-    virtual bool IsHazard() const { return false; }
-};
-
-class SkySpikeTile : public SkyTile
-{
-public:
-    virtual void Draw(sPicture* p_buffer);
-    virtual bool IsSolid() const { return false; }
-    virtual bool IsHazard() const { return true; }
-};
-
-class SkyLevel
-{
-protected:
-    SkyLevel() {}
-    float _Gravity = 900.0f;
-    sSize2D _SizeOfTile = {32, 32};
-    const sSize2D _SizeInTiles;
-    SkyTile** _pLevelMesh = nullptr;
-
-    SkyEmptyTile _EmptyTile;
-
-public:
-    virtual ~SkyLevel();
-
-    SkyLevel(const sSize2D & sizeInTiles);
-    inline float Gravity() const { return _Gravity; }
-    inline const sSize2D& SizeOfTile() const { return _SizeOfTile; }
-    inline const sSize2D& SizeInTiles() const { return _SizeInTiles; }
-    inline const int ScreenH() const { return _SizeOfTile.H * _SizeInTiles.H; }
-    inline const int ScreenW() const { return _SizeOfTile.W * _SizeInTiles.W; }
-
-    inline bool CheckOutOfScreen(const sVec2D& pos) const 
-    { return (pos.x < 0.0f || pos.y < 0.0 || pos.x >= ScreenW() || pos.y >= ScreenH()); }
-
-    inline sPos2D GetTilePos(const sVec2D& pos) const
-    {
-        return { (int)pos.x / (int)_SizeOfTile.W, (int)pos.y / (int)_SizeOfTile.H };
-    }
-
-    virtual bool SetupLevel() = 0;
-    
-    inline bool IsSolid(int tx, int ty) const { return GetTile(tx, ty)->IsSolid(); }
-    inline bool IsHazard(int tx, int ty) const { return GetTile(tx, ty)->IsHazard(); }
-
-    void AddTile(SkyTile *p_tile, int tx, int ty);
-    const SkyTile* GetTile(int tx, int ty) const;
-
-    inline void AddGroundTile(int tx, int ty) { AddTile(new SkyGroundTile(), tx, ty); }
-    inline void AddSpikeTile(int tx, int ty) { AddTile(new SkySpikeTile(), tx, ty); }
-    inline void AddDecorTile(int tx, int ty) { AddTile(new SkyDecorTile(), tx, ty); }
-};
-
-class SkyLevel_Level1 : public SkyLevel
-{
-public:
-    SkyLevel_Level1();
-    virtual bool SetupLevel();
-};
-
-class SkyLevel_Level2 : public SkyLevel
-{
-public:
-    SkyLevel_Level2();
-    virtual bool SetupLevel();
-};
-
-class SkyLevel_Level3 : public SkyLevel
-{
-public:
-    SkyLevel_Level3();
-    virtual bool SetupLevel();
-};
-
-
-class SkyPlayer : public SkyCharacterEntity
-{
-protected:
-    void FireBullet();
-
-public:
-    SkyPlayer(int health);
-    virtual void Reset();
-    virtual void Update(sTime curTime, sTime delta) override;
-    virtual void Draw(sPicture* p_buffer) override;
-};
-
-
+#include "Gameplay.h"
+#include "Profiler.h"
 
 class sGameplay : public IApplication
 {
@@ -447,7 +226,7 @@ struct sGlyph
     std::vector<unsigned char> bitmap;
 };
 
-class sFont : public sAsset
+class sFont : public sRefControl
 {
 protected:
     std::map<sU32, sGlyph> _Chars;
@@ -477,8 +256,8 @@ private:
     std::map<sID, sFont*> _Fonts;
     std::map<sID, sPicture*> _Pictures;
     
-    ~sAssetManager();
 public:
+    ~sAssetManager();
 
     sFont* getFont(sID id);
     sPicture* getPicture(sID id);
@@ -496,30 +275,53 @@ private:
     Skybound() {}
 public:
     static Skybound* getSingleton();
-
+    static void DESTROY();
 
 public:
+    ~Skybound();
+
     void Start();
 
-    Logging Log;
 
     void SetCurrentLevel(SkyLevel* val) {
         if (pCurrentLevel != nullptr) { delete pCurrentLevel; } 
         pCurrentLevel = val;
     }
-    SkyLevel* CurrentLevel() { return pCurrentLevel; }
-    sPlatform* GetPlatform() { return pPlatform; }
-    sGameplay* GetGameplay() { return pGameplay; }
-    sAssetManager* GetAssets() { return pAssets; }
+
+    inline Logging& Log() { return _Log; }
+    inline sProfiler& Profiler() { return _Profiler; }
+    inline sSettings& Settings() { return _Settings; }
+
+    inline SkyLevel* CurLevel() { return pCurrentLevel; }
+    inline sPlatform& Platform() { return *pPlatform; }
+    inline sGameplay& Gameplay() { return *pGameplay; }
+    inline sAssetManager& Assets() { return *pAssets; }
 
 private:
+    Logging _Log;
+    sProfiler _Profiler;
+    sSettings _Settings;
+    
     SkyLevel* pCurrentLevel = nullptr;
     sPlatform* pPlatform = nullptr;
     sGameplay* pGameplay = nullptr;
     sAssetManager* pAssets = nullptr;
 };
 
-#define SKY_LEVEL() Skybound::getSingleton()->CurrentLevel()
-#define SKY_ASSETS() Skybound::getSingleton()->GetAssets()
-#define SKY_GAMEPLAY() Skybound::getSingleton()->GetGameplay()
-#define SKY_PLATFORM() Skybound::getSingleton()->GetPlatform()
+#define SKY_LEVEL() Skybound::getSingleton()->CurLevel()
+#define SKY_PROFILER() Skybound::getSingleton()->Profiler()
+#define SKY_ASSETS() Skybound::getSingleton()->Assets()
+#define SKY_GAMEPLAY() Skybound::getSingleton()->Gameplay()
+#define SKY_PLATFORM() Skybound::getSingleton()->Platform()
+
+class sProfScope
+{
+public:
+    sProfScope(sID id) : _id(id) { SKY_PROFILER().Begin(_id); }
+    ~sProfScope() { SKY_PROFILER().End(_id); }
+private:
+    sID _id;
+};
+
+#define SKY_PROFSCOPE(a) sProfScope(a)
+

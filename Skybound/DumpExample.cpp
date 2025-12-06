@@ -398,13 +398,11 @@ int Dump_RunTest()
     dLevel demo = CreateDemoSkyboundLevel();
 
     std::stringstream str_json;
-
     str_json << ThorsAnvil::Serialize::jsonExport(demo) << std::endl;
     std::string str_json_base = str_json.str();
     SKY_PRINTLN(str_json_base.c_str());
 
     std::istringstream input(str_json_base);
-    
     dLevel demo2;
     input >> ThorsAnvil::Serialize::jsonImport(demo2);
 

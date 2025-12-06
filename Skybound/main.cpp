@@ -16,5 +16,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int nCmdShow)
     //WinMain_old(hInstance, NULL, NULL, nCmdShow);
     
     Skybound::getSingleton()->Start();
+    Skybound::DESTROY();
     return 0;
 }

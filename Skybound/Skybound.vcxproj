@@ -159,6 +159,9 @@
   <ItemGroup>
     <ClInclude Include="Color.h" />
     <ClInclude Include="Formatting.h" />
+    <ClInclude Include="Gameplay.h" />
+    <ClInclude Include="Profiler.h" />
+    <ClInclude Include="Settings.h" />
     <ClInclude Include="Skybound.h" />
     <ClInclude Include="Types2D.h" />
   </ItemGroup>

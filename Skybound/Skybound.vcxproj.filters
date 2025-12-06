@@ -18,5 +18,8 @@
     <ClInclude Include="Types2D.h" />
     <ClInclude Include="Formatting.h" />
     <ClInclude Include="Color.h" />
+    <ClInclude Include="Profiler.h" />
+    <ClInclude Include="Gameplay.h" />
+    <ClInclude Include="Settings.h" />
   </ItemGroup>
 </Project>

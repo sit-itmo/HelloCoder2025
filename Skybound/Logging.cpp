@@ -24,7 +24,7 @@ void Logging::LogMessagePrefix(const char* p_file, int line, const char* p_modul
 {
     char buf[Logging::MaxMessageSize];
 
-    if (_TraceEnabled == false && kind == Kind_TRACE)
+    if (_Settings.TraceEnabled == false && kind == Kind_TRACE)
     {
         return;
     }
@@ -32,17 +32,17 @@ void Logging::LogMessagePrefix(const char* p_file, int line, const char* p_modul
     if (kind != Kind_PRINT)
     {
         PutText("\n");
-        if (_PrintFile)
+        if (_Settings.PrintFile)
         {
             snprintf(buf, sizeof(buf), "%12s:%4d: ", GetJustFileName(p_file), line);
             PutText(buf);
         }
-        if (_PrintTime)
+        if (_Settings.PrintTime)
         {
-            snprintf(buf, sizeof(buf), "%f ", Skybound::getSingleton()->GetPlatform()->GetTime());
+            snprintf(buf, sizeof(buf), "%f ", SKY_PLATFORM().GetTime());
             PutText(buf);
         }
-        if (_PrintModule)
+        if (_Settings.PrintModule)
         {
             snprintf(buf, sizeof(buf), "[%6s] ", p_module == nullptr ? " " : p_module);
             PutText(buf);
@@ -97,24 +97,24 @@ void Logging::PutText(const char* p_text)
     {
         Setup();
     }
-    if (_WriteConsole)
+    if (_Settings.WriteConsole)
     {
         printf("%s", p_text);
-        if (_FlushAlways)
+        if (_Settings.FlushAlways)
         {
             fflush(stdout);
         }
     }
-    if (_WriteFile)
+    if (_Settings.WriteFile)
     {
         if (pLogFile == nullptr)
         {
-            pLogFile = fopen(SKYBOUND_DEFAULT_LOG_FILE, "at");
+            pLogFile = fopen(_Settings.LogFileName.c_str(), "at");
         }
         if (pLogFile != nullptr)
         {
             fprintf(pLogFile, "%s", p_text);
-            if (_FlushAlways)
+            if (_Settings.FlushAlways)
             {
                 fflush(pLogFile);
             }
@@ -124,9 +124,9 @@ void Logging::PutText(const char* p_text)
 
 bool Logging::Setup()
 {
-    if (_WriteConsole)
+    if (_Settings.WriteConsole)
     {
-        Skybound::getSingleton()->GetPlatform()->SetupConsole();
+        SKY_PLATFORM().SetupConsole();
     }
     _Ready = true;
     return true;
