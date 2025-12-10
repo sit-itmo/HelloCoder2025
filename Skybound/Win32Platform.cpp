@@ -197,7 +197,8 @@ void sWin32Platform::Loop()
     MSG msg;
     while (g_running)
     {
-        // обработка сообщений Windows
+        SKY_PROFSCOPE("main_fps");
+
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
             if (msg.message == WM_QUIT)
@@ -210,16 +211,22 @@ void sWin32Platform::Loop()
         float dt = (currTime - prevTime) / 1000.0f;
         if (dt > 0.05f) dt = 0.05f;
 
-        for (auto& a : Apps)
         {
-            a->Update(currTime / 1000.0f, dt);
+            SKY_PROFSCOPE("main_update");
+            for (auto& a : Apps)
+            {
+                a->Update(currTime / 1000.0f, dt);
+            }
         }
         prevTime = currTime;
         
-        BackBuffer.Clear();
-        for (auto& a : Apps)
         {
-            a->Render(&BackBuffer);
+            SKY_PROFSCOPE("main_draw");
+            BackBuffer.Clear();
+            for (auto& a : Apps)
+            {
+                a->Render(&BackBuffer);
+            }
         }
 
 

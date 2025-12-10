@@ -145,6 +145,18 @@ void sPicture::Clear(sColor color)
     std::fill(pPixels, pPixels + _Size.W * _Size.H, color);
 }
 
+void sPicture::DrawRect(const sPos2D &pos, const sSize2D &size, sColor color)
+{
+    for (int y = (int)pos.Y; y < (int)(pos.Y + size.H); ++y)
+    {
+        for (int x = (int)pos.X; x < (int)(pos.X + size.W); ++x)
+        {
+            PutPixel(x, y, color);
+        }
+    }
+}
+
+
 // -------------------------------------------------------------
 // Drawing another picture with scaling and alpha blending
 //
@@ -157,11 +169,11 @@ void sPicture::Clear(sColor color)
 // Scaling is done with nearest-neighbor sampling.
 // Colors are blended as src over dst, using 0xAARRGGBB format.
 // -------------------------------------------------------------
-void sPicture::DrawPicture(const sPicture& src,
+void sPicture::DrawPicture(const IPicture* src,
     const sPos2D& srcPos, const sSize2D& srcSize,
     const sPos2D& dstPos, const sSize2D& dstSize)
 {
-    if (!pPixels || !src.pPixels) return;
+    if (!src || !pPixels || !src->Data()) return;
     if (srcSize.W == 0 || srcSize.H == 0) return;
     if (dstSize.W == 0 || dstSize.H == 0) return;
 
@@ -182,7 +194,7 @@ void sPicture::DrawPicture(const sPicture& src,
 
         if (srcY < srcPos.Y || srcY >= srcPos.Y + static_cast<int>(srcSize.H))
             continue;
-        if (srcY < 0 || srcY >= static_cast<int>(src._Size.H))
+        if (srcY < 0 || srcY >= static_cast<int>(src->GetSize().H))
             continue;
 
         for (unsigned int dx = 0; dx < dstSize.W; ++dx)
@@ -201,11 +213,11 @@ void sPicture::DrawPicture(const sPicture& src,
 
             if (srcX < srcPos.X || srcX >= srcPos.X + static_cast<int>(srcSize.W))
                 continue;
-            if (srcX < 0 || srcX >= static_cast<int>(src._Size.W))
+            if (srcX < 0 || srcX >= static_cast<int>(src->GetSize().W))
                 continue;
 
             // Fetch source and destination pixels
-            sColor srcColor = src.GetPixel(static_cast<unsigned int>(srcX),
+            sColor srcColor = src->GetPixel(static_cast<unsigned int>(srcX),
                 static_cast<unsigned int>(srcY));
 
             sColor& dstRef = pPixels[dstY * _Size.W + dstX];
@@ -213,6 +225,23 @@ void sPicture::DrawPicture(const sPicture& src,
         }
     }
 }
+
+void sPicture::PutPixel(unsigned int x, unsigned int y, sColor color)
+{
+    if (!pPixels) return;
+    if (x >= _Size.W || y >= _Size.H) return;
+
+    pPixels[y * _Size.W + x] = color;
+}
+
+sColor sPicture::GetPixel(unsigned int x, unsigned int y) const
+{
+    if (!pPixels) return 0;
+    if (x >= _Size.W || y >= _Size.H) return 0;
+
+    return pPixels[y * _Size.W + x];
+}
+
 
 #include <png.h>
 bool sPicture::LoadPNG(const char* p_path)

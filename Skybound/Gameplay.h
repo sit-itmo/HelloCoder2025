@@ -1,5 +1,26 @@
 #pragma once
 class sGameplay;
+
+
+struct SkyPictureWithCamera : public IPicture
+{
+    IPicture* pPic = nullptr;
+    sVec2D Camera = { 0, 0 };
+
+    virtual void Clear(sColor color);
+    virtual void PutPixel(unsigned int x, unsigned int y, sColor color);
+    virtual sColor GetPixel(unsigned int x, unsigned int y) const;
+    virtual void DrawPicture(const IPicture* src,
+        const sPos2D& srcPos, const sSize2D& srcSize,
+        const sPos2D& dstPos, const sSize2D& dstSize);
+    virtual void DrawRect(const sPos2D& pos, const sSize2D& size, sColor color);
+    virtual sSize2D GetSize() const;
+    virtual unsigned int Width() const;
+    virtual unsigned int Height() const;
+    virtual sColor* Data();
+    virtual const sColor* Data() const;
+};
+
 class SkyEntity : public sRefControl
 {
     friend class sGameplay;
@@ -10,7 +31,7 @@ protected:
     bool    _Enabled;
     bool    _NeedToDelete = false;
 
-    void DrawTileRect(sPicture* p_pic, sColor color);
+    void DrawTileRect(IPicture* p_pic, sColor color);
 
 public:
     inline int Layer() const { return _Layer; }
@@ -25,7 +46,7 @@ public:
 
     virtual void Kill();
     virtual void Update(sTime curTime, sTime dt) = 0;
-    virtual void Draw(sPicture* p_buffer) = 0;
+    virtual void Draw(IPicture* p_buffer) = 0;
 
     bool Intersects(const sVec2D& otherPos, const sSize2D& otherSize) const;
     bool Intersects(const SkyEntity& other) const;
@@ -64,7 +85,7 @@ public:
     void Init(const sVec2D& pos, sVec2D vec, float life, sColor col);
     SkyParticle(const sVec2D& pos, sVec2D vec, float life, sColor col);
     void Update(sTime curTime, sTime dt);
-    void Draw(sPicture* p_buffer);
+    void Draw(IPicture* p_buffer);
 };
 
 class SkyBullet : public SkyActiveEntity
@@ -79,7 +100,7 @@ protected:
 public:
     SkyBullet(const sVec2D& pos, int direction);
     void Update(sTime curTime, sTime dt);
-    void Draw(sPicture* p_buffer);
+    void Draw(IPicture* p_buffer);
 };
 
 class SkyCharacterEntity : public SkyActiveEntity
@@ -131,9 +152,10 @@ private:
 public:
     void Kill();
     SkyEnemie();
+    ~SkyEnemie();
     SkyEnemie(const sVec2D& pos, int health, float speed);
     void Update(sTime curTime, sTime dt);
-    void Draw(sPicture* p_buffer);
+    void Draw(IPicture* p_buffer);
 
 };
 
@@ -151,7 +173,7 @@ public:
     SkyPlayer(int health);
     virtual void Reset();
     virtual void Update(sTime curTime, sTime delta) override;
-    virtual void Draw(sPicture* p_buffer) override;
+    virtual void Draw(IPicture* p_buffer) override;
 };
 
 class SkyTile : public SkyEntity
@@ -174,11 +196,29 @@ public:
     virtual bool IsHazard() const = 0;
 };
 
+class SkySpritedEntity : public SkyEntity
+{
+    bool _Deleting = false;
+    SkyEntity* _pObj = nullptr;
+    sSprite* _pSprite = nullptr;
+public:
+    inline bool Deleting() { return _Deleting; }
+    inline SkyEntity* pObj() { return _pObj; }
+    inline sSprite* pSprite() { return _pSprite; }
+
+    SkySpritedEntity(SkyEntity* p_obj, sSprite* p_sprite);
+    ~SkySpritedEntity();
+
+    virtual void Update(sTime curTime, sTime delta);
+    virtual void Draw(IPicture* p_buffer);
+};
+
+
 class SkyEmptyTile : public SkyTile
 {
 public:
     virtual void Update(sTime curTime, sTime delta) {}
-    virtual void Draw(sPicture* p_buffer) {}
+    virtual void Draw(IPicture* p_buffer) {}
     virtual bool IsSolid() const { return false; }
     virtual bool IsHazard() const { return false; }
 };
@@ -186,7 +226,7 @@ public:
 class SkyGroundTile : public SkyTile
 {
 public:
-    virtual void Draw(sPicture* p_buffer);
+    virtual void Draw(IPicture* p_buffer);
     virtual bool IsSolid() const { return true; }
     virtual bool IsHazard() const { return false; }
 };
@@ -194,7 +234,7 @@ public:
 class SkyDecorTile : public SkyTile
 {
 public:
-    virtual void Draw(sPicture* p_buffer);
+    virtual void Draw(IPicture* p_buffer);
     virtual bool IsSolid() const { return false; }
     virtual bool IsHazard() const { return false; }
 };
@@ -202,13 +242,16 @@ public:
 class SkySpikeTile : public SkyTile
 {
 public:
-    virtual void Draw(sPicture* p_buffer);
+    virtual void Draw(IPicture* p_buffer);
     virtual bool IsSolid() const { return false; }
     virtual bool IsHazard() const { return true; }
 };
 
 class SkyLevel
 {
+protected:
+    virtual void RegisterEntity(SkyEntity* p_e, int layer);
+
 protected:
     SkyLevel() {}
     float _Gravity = 900.0f;
@@ -221,8 +264,8 @@ protected:
 
 public:
     virtual ~SkyLevel();
-
     SkyLevel(const sSize2D& sizeInTiles);
+    inline const SkyTile* pEmptyTile() const { return &_EmptyTile; }
     inline std::vector<SkyCharacterEntity*>& Enemies() { return _Enemies; }
     inline float Gravity() const { return _Gravity; }
     inline const SkyPlayer* cPlayer() const { return _pPlayer; }
@@ -241,51 +284,70 @@ public:
         return { (int)pos.x / (int)_SizeOfTile.W, (int)pos.y / (int)_SizeOfTile.H };
     }
 
-    virtual bool SetupLevel() = 0;
-    virtual bool SetupEnemies() = 0;
-    virtual bool SetupPlayer() = 0;
-
     inline bool IsSolid(int tx, int ty) const { return cGetTile(tx, ty)->IsSolid(); }
     inline bool IsHazard(int tx, int ty) const { return cGetTile(tx, ty)->IsHazard(); }
 
-    void AddTile(SkyTile* p_tile, int tx, int ty);
-    const SkyTile* cGetTile(int tx, int ty) const;
-    SkyTile* GetTile(int tx, int ty);
-    void DelTile(int tx, int ty);
-    void AddEnemie(SkyCharacterEntity* p_enemie, const sVec2D& pos, int health, float speed);
-    void DelEnemie(SkyCharacterEntity* p_enemie);
-    void SetPlayer(SkyPlayer* p_player, const sVec2D& pos, int health, float speed);
+    virtual bool AddTile(SkyTile* p_tile, int tx, int ty);
+    virtual const SkyTile* cGetTile(int tx, int ty) const;
+    virtual SkyTile* GetTile(int tx, int ty);
+    virtual void DelTile(int tx, int ty);
+    virtual bool AddEnemie(SkyCharacterEntity* p_enemie, const sVec2D& pos, int health, float speed);
+    virtual void DelEnemie(SkyCharacterEntity* p_enemie);
+    virtual bool SetPlayer(SkyPlayer* p_player, const sVec2D& pos, int health, float speed);
 
     inline void AddGroundTile(int tx, int ty) { AddTile(new SkyGroundTile(), tx, ty); }
     inline void AddSpikeTile(int tx, int ty) { AddTile(new SkySpikeTile(), tx, ty); }
     inline void AddDecorTile(int tx, int ty) { AddTile(new SkyDecorTile(), tx, ty); }
 };
 
-class SkyLevel_Level1 : public SkyLevel
+class SkySpritedLevel : public SkyLevel
 {
+protected:
+    std::map<SkyTile*, SkySpritedEntity*> _DelMap;
+    virtual void RegisterEntity(SkyEntity* p_e, int layer);
 public:
-    SkyLevel_Level1();
-    virtual bool SetupLevel();
-    virtual bool SetupEnemies();
-    virtual bool SetupPlayer();
+    virtual ~SkySpritedLevel();
+
+    SkySpritedLevel(const sSize2D& sizeInTiles) : SkyLevel(sizeInTiles) {}
+    virtual void DelTile(int tx, int ty);
+    virtual bool AddTile(SkyTile* p_tile, int tx, int ty);
+    virtual bool AddEnemie(SkyCharacterEntity* p_enemie, const sVec2D& pos, int health, float speed);
+    virtual bool SetPlayer(SkyPlayer* p_player, const sVec2D& pos, int health, float speed);
 };
 
-class SkyLevel_Level2 : public SkyLevel
+struct ISkyLevelBuilder
 {
-public:
-    SkyLevel_Level2();
-    virtual bool SetupLevel();
-    virtual bool SetupEnemies();
-    virtual bool SetupPlayer();
+    virtual sSize2D GetSize() = 0;
+    virtual bool SetupLevel(SkyLevel *p_level) = 0;
+    virtual bool SetupEnemies(SkyLevel* p_level) = 0;
+    virtual bool SetupPlayer(SkyLevel* p_level) = 0;
 };
 
-class SkyLevel_Level3 : public SkyLevel
+class SkyLevel_Level1 : public ISkyLevelBuilder
 {
 public:
-    SkyLevel_Level3();
-    virtual bool SetupLevel();
-    virtual bool SetupEnemies();
-    virtual bool SetupPlayer();
+    virtual sSize2D GetSize();
+    virtual bool SetupLevel(SkyLevel* p_level);
+    virtual bool SetupEnemies(SkyLevel* p_level);
+    virtual bool SetupPlayer(SkyLevel* p_level);
+};
+
+class SkyLevel_Level2 : public ISkyLevelBuilder
+{
+public:
+    virtual sSize2D GetSize();
+    virtual bool SetupLevel(SkyLevel* p_level);
+    virtual bool SetupEnemies(SkyLevel* p_level);
+    virtual bool SetupPlayer(SkyLevel* p_level);
+};
+
+class SkyLevel_Level3 : public ISkyLevelBuilder
+{
+public:
+    virtual sSize2D GetSize();
+    virtual bool SetupLevel(SkyLevel* p_level);
+    virtual bool SetupEnemies(SkyLevel* p_level);
+    virtual bool SetupPlayer(SkyLevel* p_level);
 };
 
 

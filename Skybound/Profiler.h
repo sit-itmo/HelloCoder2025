@@ -8,12 +8,12 @@ class sProfiler
 {
 public:
     using Clock = std::chrono::steady_clock;
-
     struct CounterSnapshot
     {
         std::uint64_t Count = 0;      // How many times End() was called
         double        TotalMs = 0.0;  // Total accumulated time in milliseconds
     };
+    typedef std::unordered_map<sID, CounterSnapshot> AllSnapshots;
 
     // Start measuring for the given counter id
     void Begin(sID id)
@@ -69,7 +69,7 @@ public:
     }
 
     // Get snapshots for all counters
-    std::unordered_map<sID, CounterSnapshot> GetAllSnapshots() const
+    AllSnapshots GetAllSnapshots() const
     {
         std::unordered_map<sID, CounterSnapshot> result;
         result.reserve(_counters.size());

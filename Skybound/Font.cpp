@@ -72,6 +72,7 @@ sFont *sFont::LoadFromFile(const char* p_fileName, float size)
     }
 
     sFreeTypeFont* p_font = new sFreeTypeFont();
+    p_font->_Size = size;
     if (FT_New_Face(g_SkyLib, p_fileName, 0, &p_font->Face))
     {
         goto ERROR;
@@ -144,7 +145,7 @@ void sFont::PrintText(sPicture& pic, const sPos2D& loc, sColor color, const std:
     {
         if (ch == '\n')
         {
-            y += 20;
+            y += (int)_Size + 10;
             penX = loc.X;
             continue;
         }

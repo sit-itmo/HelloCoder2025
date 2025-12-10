@@ -7,43 +7,78 @@ bool sGameplay::Init()
     SKY_ASSETS().addFont("UNICODE", "d:\\HelloCoder2025\\assets\\NotoSansJP-Regular.ttf", 18);
     SKY_ASSETS().addPicture("MAIN", "c:\\Users\\user\\Desktop\\full3.png");
     
-    SkyLevel *p_level = new SkyLevel_Level3();
+    ISkyLevelBuilder* p_builder = new SkyLevel_Level3();
+    SkyLevel *p_level = new SkySpritedLevel(p_builder->GetSize());
     Skybound::getSingleton()->SetCurrentLevel(p_level);
-    p_level->SetupLevel();
-    p_level->SetupEnemies();
-    p_level->SetupPlayer();
+    p_builder->SetupLevel(p_level);
+    p_builder->SetupEnemies(p_level);
+    p_builder->SetupPlayer(p_level);
 
+    return true;
+}
+
+bool sGameplay::UpdateGui(sTime curTime, sTime delta)
+{
+    SKY_PROFSCOPE("sky_camera");
+    //current_frame = ((int)curTime) % 5;
+
+    if (_StatusFrameTime == 0)
+    {
+        _PrevSnapshot = SKY_PROFILER().GetAllSnapshots();
+        _StatusFrameTime = curTime;
+    }
+    else if ((curTime - _StatusFrameTime) >= 1)
+    {
+        float fd = (curTime - _StatusFrameTime);
+        auto snap = SKY_PROFILER().GetAllSnapshots();
+        int64_t delta = (int64_t)snap["main_fps"].Count - (int64_t)_PrevSnapshot["main_fps"].Count;
+        char buf[128] = { 0 };
+        float tott = (float)(snap["main_fps"].TotalMs - (int64_t)_PrevSnapshot["main_fps"].TotalMs);
+        float updt = (float)(snap["main_update"].TotalMs - (int64_t)_PrevSnapshot["main_update"].TotalMs);
+        float drat = (float)(snap["main_draw"].TotalMs - (int64_t)_PrevSnapshot["main_draw"].TotalMs);
+
+        snprintf(buf, sizeof(buf), "FPS: %f: upd=%f dra=%f", 
+            (float)delta / fd, 100.0f * updt / tott, 100.0f * drat / tott);
+
+        _StatusFrameLine = buf;
+        _PrevSnapshot = snap;
+        _StatusFrameTime = curTime;
+    }
     return true;
 }
 
 bool sGameplay::Update(sTime curTime, sTime delta)
 {
-    current_frame = ((int)curTime) % 5;
-    
-    for (int i = 0; i < MAX_LAYERS; i++)
     {
-        for (SkyEntity* p_obj : _ToAdd)
+        SKY_PROFSCOPE("sky_uadd");
+        for (int i = 0; i < MAX_LAYERS; i++)
         {
-            if (p_obj != nullptr)
+            for (SkyEntity* p_obj : _ToAdd)
             {
-                _Entities[abs(p_obj->Layer()) % MAX_LAYERS].push_back(p_obj);
+                if (p_obj != nullptr)
+                {
+                    _Entities[abs(p_obj->Layer()) % MAX_LAYERS].push_back(p_obj);
+                }
             }
+            _ToAdd.clear();
         }
-        _ToAdd.clear();
     }
 
-    for (int i = 0; i < MAX_LAYERS; i++)
     {
-        _InsideLoop = true;
-        for (SkyEntity* p_obj : _Entities[i])
+        SKY_PROFSCOPE("sky_update");
+        for (int i = 0; i < MAX_LAYERS; i++)
         {
-            SkyEntity* p_obj_saved = p_obj;
-            if (p_obj != nullptr)
+            _InsideLoop = true;
+            for (SkyEntity* p_obj : _Entities[i])
             {
-                p_obj->Update(curTime, delta);
+                SkyEntity* p_obj_saved = p_obj;
+                if (p_obj != nullptr)
+                {
+                    p_obj->Update(curTime, delta);
+                }
             }
+            _InsideLoop = false;
         }
-        _InsideLoop = false;
     }
 #if 0
     for (int i = 0; i < MAX_LAYERS; i++)
@@ -62,48 +97,69 @@ bool sGameplay::Update(sTime curTime, sTime delta)
         }
     }
 #endif
-    for (SkyEntity* e : _ToDel)
     {
-        delete e;
+        SKY_PROFSCOPE("sky_udel");
+        for (SkyEntity* e : _ToDel)
+        {
+            delete e;
+        }
+        _ToDel.clear();
     }
-    _ToDel.clear();
-    
+
     UpdateCamera();
+    UpdateGui(curTime, delta);
     return true;
 }
 
 void sGameplay::UpdateCamera()
 {
-    _Camera.x = SKY_LEVEL()->cPlayer()->Position().x + SKY_LEVEL()->cPlayer()->Size().W / 2 - SKY_PLATFORM().ScreenSize().W / 2;
-    if (_Camera.x < 0) _Camera.x = 0;
+    SKY_PROFSCOPE("sky_camera");
+
+    _Screen.Camera.x = SKY_LEVEL()->cPlayer()->Position().x + SKY_LEVEL()->cPlayer()->Size().W / 2 - SKY_PLATFORM().ScreenSize().W / 2;
+    if (_Screen.Camera.x < 0) _Screen.Camera.x = 0;
     float maxCamX = (float)(SKY_LEVEL()->LevelW() - SKY_PLATFORM().ScreenSize().W);
-    if (_Camera.x > maxCamX) _Camera.x = maxCamX;
+    if (_Screen.Camera.x > maxCamX) _Screen.Camera.x = maxCamX;
 
 }
 
 void sGameplay::Render(sPicture* p_buffer)
 {
-    _InsideLoop = true;
-    for (int i = 0; i < MAX_LAYERS; i++)
     {
-        for (SkyEntity* p_obj : _Entities[i])
+        SKY_PROFSCOPE("sky_draw");
+        _Screen.pPic = p_buffer;
+        _InsideLoop = true;
+        for (int i = 0; i < MAX_LAYERS; i++)
         {
-            if (p_obj != nullptr)
+            for (SkyEntity* p_obj : _Entities[i])
             {
-                p_obj->Draw(p_buffer);
+                if (p_obj != nullptr)
+                {
+                    p_obj->Draw(&_Screen);
+                }
             }
         }
+        _InsideLoop = false;
     }
-    _InsideLoop = false;
 
-    sFont *p_font = SKY_ASSETS().getFont("UNICODE");
-    sPicture *p_pic = SKY_ASSETS().getPicture("MAIN");
-    
-    char buf[32] = { 0 };
-    snprintf(buf, sizeof(buf), "[%d]", ((int)SKY_PLATFORM().GetTime()) % 5);
-    p_font->PrintText(*p_buffer, sPos2D(50, 50), sColor(255, 0, 0), buf);
-    p_buffer->DrawPicture(*p_pic, sPos2D(current_frame * 32, 0), sSize2D(32, 32), sPos2D(100, 100), sSize2D(32, 32));
+    RenderGui(p_buffer);
+}
 
+void sGameplay::RenderGui(sPicture* p_buffer)
+{
+    SKY_PROFSCOPE("sky_gui");
+
+    sFont* p_font = SKY_ASSETS().getFont("UNICODE");
+
+    char buf[128] = { 0 };
+    snprintf(buf, sizeof(buf), "Ent[%d:%d:%d:%d]", 
+        _Entities[0].size(), _Entities[1].size(), 
+        _Entities[2].size(), _Entities[3].size());
+    _StatusStatLine = buf;
+
+    std::string text = _StatusFrameLine + "\n" + _StatusStatLine;
+    p_font->PrintText(*p_buffer, sPos2D(10, 20), sColor(255, 0, 0), text.c_str());
+    //IPicture* p_pic = SKY_ASSETS().getPicture("MAIN");
+    //p_buffer->DrawPicture(p_pic, sPos2D(current_frame * 32, 0), sSize2D(32, 32), sPos2D(100, 100), sSize2D(32, 32));
 }
 
 sGameplay::~sGameplay()
@@ -234,6 +290,10 @@ void SkyCharacterEntity::ApplyGravity(float dt)
 }
 
 SkyCharacterEntity::~SkyCharacterEntity()
+{
+}
+
+SkyEnemie::~SkyEnemie()
 {
     SKY_LEVEL()->DelEnemie(this);
 }
@@ -425,36 +485,35 @@ void SkyTile::Update(sTime curTime, sTime prevTime)
 
 }
 
-
-void SkyEntity::DrawTileRect(sPicture* p_pic, sColor color)
+void SkyEntity::DrawTileRect(IPicture* p_pic, sColor color)
 {
-    for (int y = (int)_Position.y; y < (int)(_Position.y + _Size.H); ++y)
+    if (p_pic)
     {
-        for (int x = (int)_Position.x; x < (int)(_Position.x + _Size.W); ++x)
-        {
-            p_pic->PutPixel(x, y, color);
-        }
+        p_pic->DrawRect((sPos2D)_Position, _Size, color);
     }
 }
 
 SkyTile::~SkyTile()
 {
     const SkyTile* p_cur = SKY_LEVEL()->GetTile(this->Tx(), this->Ty());
-    SKY_ASSERT(p_cur == this);
-    SKY_LEVEL()->DelTile(this->Tx(), this->Ty());
+    if (SKY_LEVEL()->pEmptyTile() != p_cur)
+    {
+        SKY_ASSERT(p_cur == this);
+        SKY_LEVEL()->DelTile(this->Tx(), this->Ty());
+    }
 }
 
-void SkyDecorTile::Draw(sPicture* p_buffer)
+void SkyDecorTile::Draw(IPicture* p_buffer)
 {
     DrawTileRect(p_buffer, { 50, 200, 50 });
 }
 
-void SkyGroundTile::Draw(sPicture* p_buffer)
+void SkyGroundTile::Draw(IPicture* p_buffer)
 {
     DrawTileRect(p_buffer, { 100, 100, 255 });
 }
 
-void SkySpikeTile::Draw(sPicture* p_buffer)
+void SkySpikeTile::Draw(IPicture* p_buffer)
 {
     DrawTileRect(p_buffer, { 255, 50, 50 });
 
@@ -471,6 +530,11 @@ SkyLevel::SkyLevel(const sSize2D& sizeInTiles) : _SizeInTiles(sizeInTiles)
 
 SkyLevel::~SkyLevel()
 {
+    if (_pPlayer != nullptr)
+    {
+        _pPlayer->RefsDel();
+        delete _pPlayer;
+    }
     if (_pLevelMesh != nullptr)
     {
         delete[] _pLevelMesh;
@@ -490,7 +554,15 @@ SkyLevel::~SkyLevel()
 //    memcpy(buf, GetPointer, 128);
 //}
 
-void SkyLevel::AddTile(SkyTile* p_tile, int tx, int ty)
+void SkyLevel::RegisterEntity(SkyEntity* p_e, int layer)
+{
+    if (p_e)
+    {
+        SKY_GAMEPLAY().AddEntity(p_e, layer);
+    }
+}
+
+bool SkyLevel::AddTile(SkyTile* p_tile, int tx, int ty)
 {
     if (_pLevelMesh != nullptr && tx >= 0 && ty >= 0 
         && tx < (int)_SizeInTiles.W && ty < (int)_SizeInTiles.H)
@@ -499,13 +571,14 @@ void SkyLevel::AddTile(SkyTile* p_tile, int tx, int ty)
         SkyTile* p_old_tile = _pLevelMesh[ty * _SizeInTiles.W + tx];
         if (p_old_tile != nullptr)
         {
-            delete p_old_tile;
+            DelTile(tx, ty);
         }
-        _pLevelMesh[ty * _SizeInTiles.W + tx] = p_tile;
         p_tile->RefsAdd();
-        SKY_GAMEPLAY().AddEntity(p_tile, 0);
+        _pLevelMesh[ty * _SizeInTiles.W + tx] = p_tile;
+        RegisterEntity(p_tile, 0);
+        return true;
     }
-    return;
+    return false;
 }
 
 SkyTile* SkyLevel::GetTile(int tx, int ty)
@@ -547,39 +620,40 @@ void SkyLevel::DelTile(int tx, int ty)
         p_res = _pLevelMesh[ty * _SizeInTiles.W + tx];
         _pLevelMesh[ty * _SizeInTiles.W + tx] = nullptr;
         p_res->RefsDel();
+        SKY_GAMEPLAY().DelEntity(p_res);
     }
 }
 
-void SkyLevel::AddEnemie(SkyCharacterEntity* p_enemie, const sVec2D& pos, int health, float speed)
+bool SkyLevel::AddEnemie(SkyCharacterEntity* p_enemie, const sVec2D& pos, int health, float speed)
 {
     if (p_enemie == nullptr)
     {
-        return;
+        return false;
     }
     p_enemie->Reset();
     p_enemie->Spawn(pos, health, speed);
     p_enemie->RefsAdd();
     _Enemies.push_back(p_enemie);
-    SKY_GAMEPLAY().AddEntity(p_enemie, 1);
+    RegisterEntity(p_enemie, 1);
+    return true;
 }
 
-void SkyLevel::SetPlayer(SkyPlayer* p_player, const sVec2D& pos, int health, float speed)
+bool SkyLevel::SetPlayer(SkyPlayer* p_player, const sVec2D& pos, int health, float speed)
 {
-
     if (p_player == nullptr)
     {
-        return;
+        return false;
     }
     p_player->Reset();
     p_player->Spawn(pos, health, speed);
-    p_player->RefsAdd();
     if (_pPlayer != nullptr)
     {
         _pPlayer->RefsDel();
         delete _pPlayer;
     }
     _pPlayer = p_player;
-    SKY_GAMEPLAY().AddEntity(p_player, 1);
+    RegisterEntity(p_player, 1);
+    return true;
 }
 
 void SkyLevel::DelEnemie(SkyCharacterEntity* p_enemie)
@@ -676,7 +750,7 @@ void SkyPlayer::Update(sTime curTime, sTime delta)
     }
 }
 
-void SkyPlayer::Draw(sPicture* p_buffer)
+void SkyPlayer::Draw(IPicture* p_buffer)
 {
     DrawTileRect(p_buffer, {255, 200, 50});
 }
@@ -710,7 +784,7 @@ void SkyBullet::Update(sTime curTime, sTime dt)
     sPos2D t = SKY_LEVEL()->GetTilePos(_Position);
     if (SKY_LEVEL()->IsSolid(t.X, t.Y))
     {
-        SpawnHitParticles({ t.X, t.Y});
+        SpawnHitParticles({ t.X * SKY_LEVEL()->SizeOfTile().W, t.Y * SKY_LEVEL()->SizeOfTile().H });
         Kill();
         return;
     }
@@ -734,7 +808,7 @@ void SkyBullet::Update(sTime curTime, sTime dt)
     }
 }
 
-void SkyBullet::Draw(sPicture* p_buffer)
+void SkyBullet::Draw(IPicture* p_buffer)
 {
    DrawTileRect(p_buffer, {255, 255, 255});
 }
@@ -770,7 +844,7 @@ void SkyParticle::Update(sTime curTime, sTime dt)
     _Position += _Vector * dt;
 }
 
-void SkyParticle::Draw(sPicture* p_buffer)
+void SkyParticle::Draw(IPicture* p_buffer)
 {
     if (!_Enabled) return;
     DrawTileRect(p_buffer, _Color);
@@ -834,8 +908,165 @@ void SkyEnemie::Update(sTime curTime, sTime dt)
     }
 }
 
-void SkyEnemie::Draw(sPicture* p_buffer)
+void SkyEnemie::Draw(IPicture* p_buffer)
 {
     if (!_Enabled) return;
     DrawTileRect(p_buffer, {200, 50, 255});
+}
+
+///////////////////////////////////////////////////////////////////
+void SkyPictureWithCamera::Clear(sColor color)
+{
+    if (pPic) { pPic->Clear(color); }
+}
+void SkyPictureWithCamera::PutPixel(unsigned int x, unsigned int y, sColor color)
+{
+    if (pPic) { pPic->PutPixel((unsigned int)(x - Camera.x), (unsigned int)(y - Camera.y), color); }
+}
+sColor SkyPictureWithCamera::GetPixel(unsigned int x, unsigned int y) const
+{
+    if (pPic) { return pPic->GetPixel((unsigned int)(x - Camera.x), (unsigned int)(y - Camera.y)); } return { 0, 0, 0 };
+}
+void SkyPictureWithCamera::DrawPicture(const IPicture* src,
+    const sPos2D& srcPos, const sSize2D& srcSize,
+    const sPos2D& dstPos, const sSize2D& dstSize)
+{
+    if (pPic) { pPic->DrawPicture(src, srcPos, srcSize, (sPos2D)(dstPos - Camera), dstSize); }
+}
+void SkyPictureWithCamera::DrawRect(const sPos2D& pos, const sSize2D& size, sColor color)
+{
+    if (pPic) { pPic->DrawRect((sPos2D)(pos - Camera), size, color); }
+}
+sSize2D SkyPictureWithCamera::GetSize() const
+{
+    if (pPic) { return pPic->GetSize(); } return { 0, 0 };
+}
+unsigned int SkyPictureWithCamera::Width() const
+{
+    if (pPic) { return pPic->Width(); } return 0;
+}
+unsigned int SkyPictureWithCamera::Height() const
+{
+    if (pPic) { return pPic->Height(); } return 0;
+}
+sColor* SkyPictureWithCamera::Data()
+{
+    if (pPic) { return pPic->Data(); } return nullptr;
+}
+const sColor* SkyPictureWithCamera::Data() const
+{
+    if (pPic) { return pPic->Data(); } return nullptr;
+}
+
+SkySpritedEntity::SkySpritedEntity(SkyEntity* p_obj, sSprite* p_sprite) : _pObj(p_obj), _pSprite(p_sprite) 
+{
+    _pObj->RefsAdd();
+}
+SkySpritedEntity::~SkySpritedEntity()
+{
+    _Deleting = true;
+    if (_pObj)
+    {
+        SkyEntity* p_ent = _pObj;
+        _pObj = nullptr;
+        p_ent->RefsDel();
+        delete p_ent;
+    }
+    if (_pSprite)
+    {
+        delete _pSprite;
+        _pSprite = nullptr;
+    }
+}
+
+void SkySpritedEntity::Update(sTime curTime, sTime delta)
+{
+    _pObj->Update(curTime, delta);
+    _pSprite->Update(curTime, delta);
+}
+
+void SkySpritedEntity::Draw(IPicture* p_buffer)
+{
+    _pSprite->Draw(p_buffer, (sPos2D)_pObj->Position(), _pObj->Size());
+}
+
+
+void SkySpritedLevel::RegisterEntity(SkyEntity* p_e, int layer)
+{
+    //nothing
+}
+SkySpritedLevel::~SkySpritedLevel()
+{
+}
+
+void SkySpritedLevel::DelTile(int tx, int ty)
+{
+    SkyTile* p_tile = GetTile(tx, ty);
+    SkySpritedEntity* p_ent = _DelMap[p_tile];
+    p_ent->RefsDel();
+    p_tile->RefsDel();
+    SkyLevel::DelTile(tx, ty);
+    if (p_ent->Deleting() == false)
+    {
+        delete p_ent;
+    }
+}
+
+bool SkySpritedLevel::AddTile(SkyTile* p_tile, int tx, int ty)
+{
+    sSprite* p_sprite = new sSprite();
+    sPos2D src{ 0, 0 };
+    bool anim = false;
+    if (p_tile->IsHazard())
+    {
+        src = { 1 * 32, 0 };
+    }
+    else
+    {
+        if (p_tile->IsSolid())
+        {
+            src = { 3 * 32, 0 };
+        }
+        else
+        {
+           anim = true;
+           src = { 0 * 32, 0 };
+        }
+    }
+    p_sprite->Init(SKY_ASSETS().getPicture("MAIN"), src, { 32, 32 },
+        anim ? sSprite::Vertical : sSprite::None, 0.5, 4);
+    if (anim)
+    {
+        p_sprite->AnimationStart(SKY_PLATFORM().GetTime());
+    }
+    SkySpritedEntity* p_sce = new SkySpritedEntity(p_tile, p_sprite);
+    if (SkyLevel::AddTile(p_tile, tx, ty))
+    {
+        p_sce->RefsAdd();
+        p_tile->RefsAdd();
+        _DelMap[p_tile] = p_sce;
+        SkyLevel::RegisterEntity(p_sce, 0);
+        return true;
+    }
+    return false;
+}
+
+bool SkySpritedLevel::AddEnemie(SkyCharacterEntity* p_enemie, const sVec2D& pos, int health, float speed)
+{
+    if (SkyLevel::AddEnemie(p_enemie, pos, health, speed))
+    {
+        SkyLevel::RegisterEntity(p_enemie, 1);
+        return true;
+    }
+    return false;
+}
+
+bool SkySpritedLevel::SetPlayer(SkyPlayer* p_player, const sVec2D& pos, int health, float speed)
+{
+    if (SkyLevel::SetPlayer(p_player, pos, health, speed))
+    {
+        SkyLevel::RegisterEntity(p_player, 1);
+        return true;
+    }
+    return false;
 }

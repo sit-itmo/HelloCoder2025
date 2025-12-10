@@ -108,7 +108,24 @@ public:
     virtual ~sRefControl();
 };
 
-class sPicture : public sRefControl
+struct IPicture
+{
+    virtual void Clear(sColor color)=0;
+    virtual void PutPixel(unsigned int x, unsigned int y, sColor color) = 0;
+    virtual sColor GetPixel(unsigned int x, unsigned int y) const = 0;
+    virtual void DrawPicture(const IPicture* src,
+        const sPos2D& srcPos, const sSize2D& srcSize,
+        const sPos2D& dstPos, const sSize2D& dstSize) = 0;
+    virtual void DrawRect(const sPos2D& pos, const sSize2D& size, sColor color)=0;
+    virtual sSize2D GetSize() const = 0;
+    virtual unsigned int Width() const = 0;
+    virtual unsigned int Height() const = 0;
+    virtual sColor* Data() = 0;
+    virtual const sColor* Data() const = 0;
+};
+
+
+class sPicture : public IPicture, public sRefControl
 {
 private:
     sSize2D _Size;    
@@ -125,37 +142,65 @@ public:
     sPicture& operator=(sPicture&& other) noexcept;
     ~sPicture();
     void Resize(sSize2D newSize);
-
+    void Clear(sColor color = 0x00000000);
     bool LoadPNG(const char *p_path);
 
-    inline void PutPixel(unsigned int x, unsigned int y, sColor color)
-    {
-        if (!pPixels) return;
-        if (x >= _Size.W || y >= _Size.H) return;
-
-        pPixels[y * _Size.W + x] = color;
-    }
-
-    inline sColor GetPixel(unsigned int x, unsigned int y) const
-    {
-        if (!pPixels) return 0;
-        if (x >= _Size.W || y >= _Size.H) return 0;
-
-        return pPixels[y * _Size.W + x];
-    }
-
-    void Clear(sColor color = 0x00000000);
-    void DrawPicture(const sPicture& src,
+    virtual void PutPixel(unsigned int x, unsigned int y, sColor color);
+    virtual sColor GetPixel(unsigned int x, unsigned int y) const;
+    virtual void DrawRect(const sPos2D& pos, const sSize2D& size, sColor color);
+    virtual void DrawPicture(const IPicture* src,
         const sPos2D& srcPos, const sSize2D& srcSize,
         const sPos2D& dstPos, const sSize2D& dstSize);
     
-    inline sSize2D GetSize() const { return _Size; }
+    virtual sSize2D GetSize() const { return _Size; }
 
-    inline unsigned int Width() const { return _Size.W; }
-    inline unsigned int Height() const { return _Size.H; }
+    virtual unsigned int Width() const { return _Size.W; }
+    virtual unsigned int Height() const { return _Size.H; }
 
-    inline sColor* Data() { return pPixels; }
-    inline const sColor* Data() const { return pPixels; }
+    virtual sColor* Data() { return pPixels; }
+    virtual const sColor* Data() const { return pPixels; }
+};
+
+class sSprite
+{
+public:
+    enum Kind
+    {
+        None,
+        Horizontal,
+        Vertical
+    };
+protected:
+    sPicture* _pTexture = nullptr;
+    sPos2D  _SrcPosition = { 0, 0 };
+    sSize2D _SrcSize = { 0, 0 };
+    sTime _AnimationStartTime = 0;
+    int _AnimationCurrentFrame = 0;
+    int _AnimationTotalFrames = 0;
+    float _AnimationSpeed = 1;
+    enum Kind _Animation = None;
+public:
+    inline const sPicture* pTexture() const { return _pTexture; }
+    inline void setSrcPosition(const sPos2D& v) { _SrcPosition = v; }
+    inline const sPos2D& SrcPosition() const { return _SrcPosition; }
+    inline void setSrcSize(const sSize2D& v) { _SrcSize = v; }
+    inline const sSize2D& SrcSize() const { return _SrcSize; }
+    inline sTime     AnimationStartTime() const { return _AnimationStartTime; }
+    inline int       AnimationCurrentFrame() const { return  _AnimationCurrentFrame; }
+    inline int       AnimationTotalFrames() const { return  _AnimationTotalFrames; }
+    inline float AnimationSpeed() const { return _AnimationSpeed; }
+    inline enum Kind Animation() const { return  _Animation; }
+
+    sSprite();
+
+    void Init(sPicture* p_pic, const sPos2D& pos, const sSize2D& size,
+        enum Kind anim = None, float animSpeed = 1.0f, int animTotal = 0);
+    virtual ~sSprite();
+
+    void AnimationStart(sTime curTime);
+    void AnimationStop();
+    void Update(sTime curTime, sTime dt);
+    void Draw(IPicture* p_buffer, const sPos2D& pos, const sSize2D& size);
 };
 
 class IApplication
@@ -215,12 +260,16 @@ private:
     std::vector<SkyEntity*> _ToAdd;
     std::vector<SkyEntity*> _ToDel;
     std::vector<SkyEntity*> _Entities[MAX_LAYERS];
-    sVec2D _Camera = { 0, 0 };
     SkyPlayer* _pPlayer = nullptr;
     bool _InsideLoop = false;
+    SkyPictureWithCamera _Screen;
+    sProfiler::AllSnapshots _PrevSnapshot;
+    float _StatusFrameTime = 0;
+    std::string _StatusFrameLine = "";
+    std::string _StatusStatLine = "";
 public:
 
-    inline const sVec2D& Camera() const { return _Camera; }
+    inline const sVec2D& Camera() const { return _Screen.Camera; }
     inline const SkyPlayer* pPlayer() const { return _pPlayer; }
 
     virtual ~sGameplay();
@@ -231,7 +280,9 @@ public:
     void UpdateCamera();
     bool Init();
     bool Update(sTime curTime, sTime delta);
+    bool UpdateGui(sTime curTime, sTime delta);
     void Render(sPicture* p_buffer);
+    void RenderGui(sPicture* p_buffer);
 };
 
 struct sGlyph
@@ -248,7 +299,7 @@ class sFont : public sRefControl
 {
 protected:
     std::map<sU32, sGlyph> _Chars;
-    float _Size;
+    float _Size = 0;
     sFont();
 
     virtual bool LoadGlyph(uint32_t codepoint, sGlyph& out)=0;

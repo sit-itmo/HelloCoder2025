@@ -71,7 +71,7 @@ void Skybound::Start()
 {
     SKY_PRINTLN("[Skybound Hello!]");
     _Settings.Load(SKYBOUND_SETTINGS_FILE);
-    
+    _Log.SetSettings(_Settings.LogSettings);
     SKY_PRINTLN("Loading...");
     pAssets = new sAssetManager();
     pGameplay = new sGameplay();
@@ -206,3 +206,77 @@ bool sSettings::Load(const char* p_path)
     }
     return true;
 }
+
+sSprite::sSprite()
+{
+
+}
+
+void sSprite::Init(sPicture* p_pic, const sPos2D& pos, const sSize2D& size, enum Kind anim, float animSpeed, int animTotal)
+{
+    _pTexture = p_pic;
+    if (_pTexture != nullptr)
+    {
+        _pTexture->RefsAdd();
+    }
+    _SrcPosition = pos;
+    _SrcSize = size;
+    _Animation = anim;
+    _AnimationSpeed = animSpeed;
+    _AnimationCurrentFrame = 0;
+    _AnimationStartTime = 0;
+    _AnimationTotalFrames = animTotal;
+}
+
+sSprite::~sSprite()
+{
+    if (_pTexture)
+    {
+        _pTexture->RefsDel();
+        _pTexture = nullptr;
+    }
+}
+
+void sSprite::AnimationStart(sTime curTime)
+{
+    _AnimationCurrentFrame = 0;
+    _AnimationStartTime = curTime;
+}
+void sSprite::AnimationStop()
+{
+    _AnimationCurrentFrame = 0;
+    _AnimationStartTime = 0;
+}
+
+void sSprite::Update(sTime curTime, sTime dt)
+{
+    if (_AnimationStartTime != 0)
+    {
+        _AnimationCurrentFrame = (int)((curTime - _AnimationStartTime) / _AnimationSpeed) % _AnimationTotalFrames;
+    }
+}
+
+void sSprite::Draw(IPicture* p_buffer, const sPos2D& pos, const sSize2D& size)
+{
+    if (p_buffer == nullptr || _pTexture == nullptr)
+    {
+        return;
+    }
+    switch (_Animation)
+    {
+    case None:
+        p_buffer->DrawPicture(_pTexture, _SrcPosition, _SrcSize, pos, size);
+        break;
+    case Horizontal:
+        p_buffer->DrawPicture(_pTexture,
+            _SrcPosition + sPos2D(_SrcSize.W * _AnimationCurrentFrame, 0),
+            _SrcSize, pos, size);
+        break;
+    case Vertical:
+        p_buffer->DrawPicture(_pTexture,
+            _SrcPosition + sPos2D(0, 0),
+            _SrcSize, pos, size);
+        break;
+    }
+}
+
