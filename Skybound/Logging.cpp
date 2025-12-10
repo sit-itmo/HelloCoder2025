@@ -24,11 +24,6 @@ void Logging::LogMessagePrefix(const char* p_file, int line, const char* p_modul
 {
     char buf[Logging::MaxMessageSize];
 
-    if (_Settings.TraceEnabled == false && kind == Kind_TRACE)
-    {
-        return;
-    }
-
     if (kind != Kind_PRINT)
     {
         PutText("\n");
@@ -84,6 +79,11 @@ void Logging::LogMessage(const char* p_file, int line, const char* p_module, enu
     std::stringstream ss(p_text);
     std::string _line;
 
+    if (_Settings.TraceEnabled == false && kind == Kind_TRACE)
+    {
+        return;
+    }
+
     while (std::getline(ss, _line))
     {
         LogMessagePrefix(p_file, line, p_module, kind);
@@ -126,9 +126,11 @@ bool Logging::Setup()
 {
     if (_Settings.WriteConsole)
     {
-        SKY_PLATFORM().SetupConsole();
+        if (SKY_PLATFORM().SetupConsole())
+        {
+            _Ready = true;
+        }
     }
-    _Ready = true;
     return true;
 }
 

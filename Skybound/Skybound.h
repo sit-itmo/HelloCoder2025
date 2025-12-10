@@ -102,7 +102,7 @@ private:
 
 public:
     inline sU32 Refs() const { return _Reference; };
-    inline void RefsAdd() { _Reference++; };
+    void RefsAdd();
     void RefsDel();
     sRefControl() { RefsAdd(); };
     virtual ~sRefControl();
@@ -182,12 +182,26 @@ public:
     virtual ~sPlatform() {}
     virtual bool SetupConsole() = 0;
     virtual bool Setup(const sString& caption, const sSize2D& size) = 0;
+    virtual const sSize2D &ScreenSize() = 0;
     virtual void Loop()=0;
     virtual bool GetKeyState(KeyCode code)=0;
     virtual float GetTime()=0;
 
     void AddApplication(IApplication* p_app);
     void DelApplication(IApplication* p_app);
+};
+
+class sPlatformEmpty : public sPlatform
+{
+    sSize2D _FakeSize = { 0, 0 };
+public:
+    ~sPlatformEmpty() {}
+    bool SetupConsole() { return false; }
+    bool Setup(const sString& caption, const sSize2D& size) { return false; }
+    const sSize2D& ScreenSize() { return _FakeSize; }
+    void Loop() {}
+    bool GetKeyState(KeyCode code) { return false; }
+    float GetTime() { return 0.0f; }
 };
 
 #include "Gameplay.h"
@@ -198,19 +212,23 @@ class sGameplay : public IApplication
 public:
     enum { MAX_LAYERS = 4 };
 private:
+    std::vector<SkyEntity*> _ToAdd;
+    std::vector<SkyEntity*> _ToDel;
     std::vector<SkyEntity*> _Entities[MAX_LAYERS];
-    sPos2D _Camera = { 0, 0 };
+    sVec2D _Camera = { 0, 0 };
     SkyPlayer* _pPlayer = nullptr;
-
+    bool _InsideLoop = false;
 public:
-    inline const sPos2D& Camera() const { return _Camera; }
+
+    inline const sVec2D& Camera() const { return _Camera; }
     inline const SkyPlayer* pPlayer() const { return _pPlayer; }
 
     virtual ~sGameplay();
 
-    void AddEntity(SkyEntity* p_obj, int layer=0);
+    void AddEntity(SkyEntity* p_obj, int layer = 0);
+    void DelEntity(SkyEntity* p_obj, int layer = -1);
 
-
+    void UpdateCamera();
     bool Init();
     bool Update(sTime curTime, sTime delta);
     void Render(sPicture* p_buffer);
@@ -303,7 +321,7 @@ private:
     sSettings _Settings;
     
     SkyLevel* pCurrentLevel = nullptr;
-    sPlatform* pPlatform = nullptr;
+    sPlatform* pPlatform = new sPlatformEmpty();
     sGameplay* pGameplay = nullptr;
     sAssetManager* pAssets = nullptr;
 };

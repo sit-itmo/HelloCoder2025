@@ -128,7 +128,7 @@ int sFont::DrawGlyph(uint32_t codepoint, sPicture &pict, sPos2D &pos, sColor c)
 
             int sx = x0 + x;
             int sy = y0 + y;
-            c.SetA(alpha);
+            c.SetA((uint8_t)alpha);
             pict.PutPixel(sx, sy, c);
         }
     }

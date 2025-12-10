@@ -268,7 +268,7 @@ bool sPicture::LoadPNG(const char* p_path)
 
     std::vector<png_bytep> rows(_Size.H);
 
-    for (int y = 0; y < _Size.H; y++)
+    for (int y = 0; y < (int)_Size.H; y++)
     {
         rows[y] = (png_bytep)((png_bytep)pPixels + y * _Size.W * 4);
     }

@@ -9,8 +9,15 @@ sRefControl::~sRefControl()
     SKY_ASSERT(_Reference == 0);
 }
 
+void sRefControl::RefsAdd()
+{
+    SKY_TRACE_EX("REF++ 0x%x", this);
+    _Reference++;
+};
+
 void sRefControl::RefsDel()
 {
+    SKY_TRACE_EX("REF-- 0x%x", this);
     SKY_ASSERT(_Reference != 0);
     _Reference--;
 };
@@ -31,11 +38,6 @@ Skybound* Skybound::getSingleton()
 Skybound::~Skybound()
 {
     _Settings.Save(SKYBOUND_SETTINGS_FILE);
-    if (pPlatform != nullptr)
-    {
-        delete pPlatform;
-        pPlatform = nullptr;
-    }
     if (pGameplay != nullptr)
     {
         delete pGameplay;
@@ -45,6 +47,11 @@ Skybound::~Skybound()
     {
         delete pAssets;
         pAssets = nullptr;
+    }
+    if (pPlatform != nullptr)
+    {
+        delete pPlatform;
+        pPlatform = nullptr;
     }
     //SkyLevel* pCurrentLevel = nullptr;
 }

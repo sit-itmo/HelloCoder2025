@@ -18,6 +18,7 @@ private:
     bool InitGraphics();
     static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
     void Reset();
+    const sSize2D& ScreenSize() { return RenderSize; }
 
 public:
 
@@ -205,10 +206,9 @@ void sWin32Platform::Loop()
             DispatchMessage(&msg);
         }
 
-        // расчёт dt
         DWORD currTime = GetTickCount();
         float dt = (currTime - prevTime) / 1000.0f;
-        if (dt > 0.05f) dt = 0.05f; // ограничим шаг
+        if (dt > 0.05f) dt = 0.05f;
 
         for (auto& a : Apps)
         {
