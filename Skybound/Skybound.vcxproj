@@ -85,6 +85,12 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
+        copy "$(TargetPath)" "$(SolutionDir)\bin\"
+copy "$(SolutionDir)\assets\sprites.png" "$(SolutionDir)\bin\"
+copy "$(SolutionDir)\assets\NotoSansJP-Regular.ttf" "$(SolutionDir)\bin\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -102,6 +108,12 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
+        copy "$(TargetPath)" "$(SolutionDir)\bin\"
+copy "$(SolutionDir)\assets\sprites.png" "$(SolutionDir)\bin\"
+copy "$(SolutionDir)\assets\NotoSansJP-Regular.ttf" "$(SolutionDir)\bin\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -117,6 +129,12 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
+        copy "$(TargetPath)" "$(SolutionDir)\bin\"
+copy "$(SolutionDir)\assets\sprites.png" "$(SolutionDir)\bin\"
+copy "$(SolutionDir)\assets\NotoSansJP-Regular.ttf" "$(SolutionDir)\bin\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -134,12 +152,17 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <PostBuildEvent>
+      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
+        copy "$(TargetPath)" "$(SolutionDir)\bin\"
+copy "$(SolutionDir)\assets\sprites.png" "$(SolutionDir)\bin\"
+copy "$(SolutionDir)\assets\NotoSansJP-Regular.ttf" "$(SolutionDir)\bin\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AssetManager.cpp" />
     <ClCompile Include="DumpExample.cpp" />
     <ClCompile Include="Font.cpp" />
-    <ClCompile Include="game.cpp" />
     <ClCompile Include="Gameplay.cpp" />
     <ClCompile Include="Levels.cpp" />
     <ClCompile Include="Logging.cpp" />

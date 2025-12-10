@@ -4,8 +4,8 @@ int current_frame = 0;
 
 bool sGameplay::Init()
 {
-    SKY_ASSETS().addFont("UNICODE", "d:\\HelloCoder2025\\assets\\NotoSansJP-Regular.ttf", 18);
-    SKY_ASSETS().addPicture("MAIN", "c:\\Users\\user\\Desktop\\full3.png");
+    SKY_ASSETS().addFont("UNICODE", "NotoSansJP-Regular.ttf", 18);
+    SKY_ASSETS().addPicture("MAIN", "sprites.png");
     
     ISkyLevelBuilder* p_builder = new SkyLevel_Level3();
     SkyLevel *p_level = new SkySpritedLevel(p_builder->GetSize());

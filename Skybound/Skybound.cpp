@@ -274,7 +274,7 @@ void sSprite::Draw(IPicture* p_buffer, const sPos2D& pos, const sSize2D& size)
         break;
     case Vertical:
         p_buffer->DrawPicture(_pTexture,
-            _SrcPosition + sPos2D(0, 0),
+            _SrcPosition + sPos2D(0, _SrcSize.H * _AnimationCurrentFrame),
             _SrcSize, pos, size);
         break;
     }
