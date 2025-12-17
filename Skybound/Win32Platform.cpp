@@ -241,7 +241,6 @@ void sWin32Platform::Loop()
             }
         }
 
-
         // вывод на экран
         HDC hdc = GetDC(hWnd);
         StretchDIBits(
