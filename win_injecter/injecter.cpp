@@ -129,8 +129,6 @@ static bool BuildFullPathInCwdW(const wchar_t* fileName, wchar_t* outPath, DWORD
     return (r != 0 && r < outCap);
 }
 
-
-
 BOOL WINAPI InjectLibW(DWORD dwProcessId, PCWSTR pszLibFile) {
 
     BOOL bOk = FALSE; // Assume that the function fails
@@ -191,8 +189,184 @@ BOOL WINAPI InjectLibW(DWORD dwProcessId, PCWSTR pszLibFile) {
     return(bOk);
 }
 
+typedef DWORD(WINAPI* TpFormatMessageA)(
+    DWORD dwFlags,
+    LPCVOID lpSource,
+    DWORD dwMessageId,
+    DWORD dwLanguageId,
+    LPSTR lpBuffer,
+    DWORD nSize,
+    va_list* Arguments
+    );
+typedef HANDLE(WINAPI* TpGetCurrentProcess)(VOID);
+typedef HMODULE(WINAPI* TpGetModuleHandleA)(LPCSTR lpModuleName);
+typedef DWORD(WINAPI* TpGetModuleFileNameA)(
+    HMODULE hModule, LPSTR lpFilename, DWORD nSize);
+typedef DWORD(WINAPI* TpGetProcessId)(HANDLE Process);
+typedef int (WINAPI* TpMessageBoxA)(
+    _In_opt_ HWND hWnd,
+    _In_opt_ LPCSTR lpText,
+    _In_opt_ LPCSTR lpCaption,
+    _In_ UINT uType);
+
+struct ShellCodeParams
+{
+    TpFormatMessageA pFormatMessageA;
+    TpGetCurrentProcess pGetCurrentProcess;
+    TpGetModuleHandleA pGetModuleHandleA;
+    TpGetModuleFileNameA pGetModuleFileNameA;
+    TpGetProcessId pGetProcessId;
+    TpMessageBoxA pMessageBoxA;
+};
+
+
+DWORD WINAPI ShellCode(LPVOID lpThreadParameter)
+{
+    //while (1);
+    //__debugbreak();
+    ShellCodeParams* p_params = (ShellCodeParams*)lpThreadParameter;
+    CHAR buf[128];
+    CHAR mod_name[128];
+    HANDLE h_proc = p_params->pGetCurrentProcess();
+    HMODULE h_mod = p_params->pGetModuleHandleA(NULL);
+    p_params->pGetModuleFileNameA(h_mod, mod_name, sizeof(mod_name));
+    LPCSTR args[] = {
+        (LPCSTR)(ULONG_PTR)p_params->pGetProcessId(h_proc),
+        mod_name
+    };
+    CHAR example[] = { 'E', 'x', 'a', 'm', 'p', 'l', 'e', 0 };
+    
+    CHAR message[] = {
+        'H', 'A', 'C', 'K', ' ', 'F', 'i', 'r', 'e', 'd', ' ', 'f', 'r', 'o', 'm', ' ', 'p', 'r', 'o', 'c', 'e', 's', 's', ' ', 'P', 'r', 'o', 'c', 'e', 's', 's', 'I', 'D', ' ', '=', ' ', '%', '1', '!', 'u', '!', '\n',
+        'P', 'r', 'o', 'c', 'e', 's', 's', 'N', 'a', 'm', 'e', ':', ' ', '%', '2', '!', 's', '!', 0 };
+    
+
+    p_params->pFormatMessageA(
+        FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ARGUMENT_ARRAY,
+        message,
+        0, // dwFlags
+        0, // dwLanguageId
+        buf, // lpBuffer
+        sizeof(buf) / sizeof(buf[0]), // nSize
+        (va_list*)args
+    );
+
+    p_params->pMessageBoxA(NULL, buf, example, MB_OK);
+    return 0;
+}
+
+
+
+BOOL WINAPI InjectShellCodeW(DWORD dwProcessId) {
+
+    BOOL bOk = FALSE; // Assume that the function fails
+    HANDLE hProcess = NULL, hThread = NULL;
+    CHAR *p_remoteBuf = NULL;
+
+    __try {
+        // Get a handle for the target process.
+        hProcess = OpenProcess(
+            PROCESS_QUERY_INFORMATION |   // Required by Alpha
+            PROCESS_CREATE_THREAD |   // For CreateRemoteThread
+            PROCESS_VM_OPERATION |   // For VirtualAllocEx/VirtualFreeEx
+            PROCESS_VM_WRITE,             // For WriteProcessMemory
+            FALSE, dwProcessId);
+        if (hProcess == NULL) __leave;
+
+        int cb = 2048;
+
+        // Allocate space in the remote process for the pathname
+        p_remoteBuf = (CHAR*)
+            VirtualAllocEx(hProcess, NULL, cb, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+        if (p_remoteBuf == NULL) __leave;
+
+        ShellCodeParams params;
+#define TTT_GETPROC(l, a) \
+    params.p ## a = (Tp ## a)GetProcAddress(GetModuleHandleA(#l), #a);
+
+        TTT_GETPROC(Kernel32, FormatMessageA);
+        TTT_GETPROC(Kernel32, GetCurrentProcess);
+        TTT_GETPROC(Kernel32, GetModuleHandleA);
+        TTT_GETPROC(Kernel32, GetModuleFileNameA);
+        TTT_GETPROC(Kernel32, GetProcessId);
+        TTT_GETPROC(User32, MessageBoxA);
+
+        if (!WriteProcessMemory(hProcess, p_remoteBuf,
+            (PVOID)&params, sizeof(params), NULL)) __leave;
+
+        CHAR* p_code_pounter = (char *)&ShellCode;
+        if (p_code_pounter[0] == (char)0xE9)
+        {
+            p_code_pounter = (CHAR *)(((LONG)p_code_pounter) 
+                + 5 + (*(INT*)(p_code_pounter + 1)));
+        }
+
+        if (!WriteProcessMemory(hProcess, p_remoteBuf + sizeof(params),
+            (PVOID)p_code_pounter, 700, NULL)) __leave;
+
+        //CHAR buff[] = { 0xEB, 0xFE };
+        //if (!WriteProcessMemory(hProcess, p_remoteBuf,
+        //    (PVOID)&buff, sizeof(buff), NULL)) __leave;
+
+
+        //p_remoteBuf[0] = 0xEB;
+        //p_remoteBuf[1] = 0xFE;
+
+        // Create a remote thread that calls LoadLibraryW(DLLPathname)
+        hThread = CreateRemoteThread(hProcess, NULL, 0,
+            (LPTHREAD_START_ROUTINE)(p_remoteBuf + sizeof(params)),
+            //(LPTHREAD_START_ROUTINE)p_remoteBuf,
+            p_remoteBuf, 0, NULL);
+        if (hThread == NULL) __leave;
+
+        // Wait for the remote thread to terminate
+        WaitForSingleObject(hThread, INFINITE);
+
+        bOk = TRUE; // Everything executed successfully
+    }
+    __finally { // Now, we can clean everything up
+
+        // Free the remote memory that contained the DLL's pathname
+        if (p_remoteBuf != NULL)
+            VirtualFreeEx(hProcess, p_remoteBuf, 0, MEM_RELEASE);
+
+        if (hThread != NULL)
+            CloseHandle(hThread);
+
+        if (hProcess != NULL)
+            CloseHandle(hProcess);
+    }
+
+    return(bOk);
+}
+
+
 int main()
 {
+    //CHAR* p_code_pounter = (char*)ShellCode;
+    //if (p_code_pounter[0] == (char)0xE9)
+    //{
+    //    p_code_pounter = (CHAR*)(((LONG)p_code_pounter)
+    //        + 5 + (*(INT*)(p_code_pounter + 1)));
+    //}
+    // 009A11D1 + 5 + 00000CFA = 9A1ED0
+    //009A11D1 E9 FA 0C 00 00       jmp         ShellCode (09A1ED0h)
+#if 0
+    ShellCodeParams params;
+
+#define TTT_GETPROC(l, a) \
+    params.p ## a = (Tp ## a)GetProcAddress(GetModuleHandleA(#l), #a);
+
+    TTT_GETPROC(Kernel32, FormatMessageA);
+    TTT_GETPROC(Kernel32, GetCurrentProcess);
+    TTT_GETPROC(Kernel32, GetModuleHandleA);
+    TTT_GETPROC(Kernel32, GetModuleFileNameA);
+    TTT_GETPROC(Kernel32, GetProcessId);
+    TTT_GETPROC(User32, MessageBoxA);
+
+    ShellCode(&params);
+#endif
+
     const wchar_t* p_dll_name = L"testdll.dll";
     //wchar_t exePath[MAX_PATH];
     //wchar_t dllPath[MAX_PATH];
@@ -207,7 +381,6 @@ int main()
     wchar_t dll_full_path[MAX_PATH];
     printf("Test DLL\n");
     BuildFullPathInCwdW(p_dll_name, dll_full_path, (DWORD)_countof(dll_full_path));
-
     //HANDLE hmod = LoadLibraryW(dll_full_path);
 
     DWORD target_pid = 0;
@@ -215,7 +388,8 @@ int main()
     if (h_proc)
     {
         CloseHandle(h_proc);
-        InjectLibW(target_pid, dll_full_path);
+        InjectShellCodeW(target_pid);
+        //InjectLibW(target_pid, dll_full_path);
     }
     return 0;
 }
