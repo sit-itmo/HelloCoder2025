@@ -2,10 +2,13 @@
 
 int current_frame = 0;
 
-bool sGameplay::Init()
+bool sGameplay::Init(const std::string &subPath)
 {
-    SKY_ASSETS().addFont("UNICODE", "NotoSansJP-Regular.ttf", 18);
-    SKY_ASSETS().addPicture("MAIN", "sprites.png");
+    char resPath[260];
+    sprintf(resPath, "%s\\%s", subPath.c_str(), "NotoSansJP-Regular.ttf");
+    SKY_ASSETS().addFont("UNICODE", resPath, 18);
+    sprintf(resPath, "%s\\%s", subPath.c_str(), "sprites.png");
+    SKY_ASSETS().addPicture("MAIN", resPath);
     
     ISkyLevelBuilder* p_builder = new SkyLevel_Level3();
     SkyLevel *p_level = new SkySpritedLevel(p_builder->GetSize());
@@ -37,7 +40,7 @@ bool sGameplay::UpdateGui(sTime curTime, sTime delta)
         float updt = (float)(snap["main_update"].TotalMs - (int64_t)_PrevSnapshot["main_update"].TotalMs);
         float drat = (float)(snap["main_draw"].TotalMs - (int64_t)_PrevSnapshot["main_draw"].TotalMs);
 
-        snprintf(buf, sizeof(buf), "FPS: %f: upd=%f dra=%f", 
+        snprintf(buf, sizeof(buf), "FPS: %f: upd=%f%% dra=%f%%", 
             (float)delta / fd, 100.0f * updt / tott, 100.0f * drat / tott);
 
         _StatusFrameLine = buf;
@@ -309,7 +312,6 @@ void SkyCharacterEntity::Reset()
     _Size = { 32, 64 };
 }
 
-
 void SkyCharacterEntity::Spawn(const sVec2D& pos, int health, float speed)
 {
     _SpawnHealth = _Health = _MaxHealth = (health > 0 ? health : 1);
@@ -317,7 +319,6 @@ void SkyCharacterEntity::Spawn(const sVec2D& pos, int health, float speed)
     _SpawnSpeed = _MoveSpeed = speed;
     _Vector.x = (_Direction >= 0) ? _MoveSpeed : -_MoveSpeed;
 }
-
 
 void SkyCharacterEntity::MoveAndCollide(float dt)
 {

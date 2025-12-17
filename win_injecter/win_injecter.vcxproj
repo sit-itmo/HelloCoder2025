@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{10688c60-ef31-4273-ad91-92b1cac3e8e6}</ProjectGuid>
-    <RootNamespace>Skybound</RootNamespace>
+    <ProjectGuid>{e926f972-f1f9-4c35-8f88-84091255c9e4}</ProjectGuid>
+    <RootNamespace>wininjecter</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -30,7 +30,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>NotSet</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -43,7 +43,7 @@
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
-    <CharacterSet>NotSet</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -75,22 +75,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\magic_enum;$(SolutionDir)3rdparty\thor;$(SolutionDir)3rdparty\freetype\include;$(SolutionDir)3rdparty\zlib;$(SolutionDir)3rdparty\libpng;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/Zc:preprocessor %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
-        copy "$(TargetPath)" "$(SolutionDir)\bin\"
-copy "$(SolutionDir)\assets\sprites.png" "$(SolutionDir)\bin\"
-copy "$(SolutionDir)\assets\NotoSansJP-Regular.ttf" "$(SolutionDir)\bin\"</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -98,43 +89,25 @@ copy "$(SolutionDir)\assets\NotoSansJP-Regular.ttf" "$(SolutionDir)\bin\"</Comma
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\magic_enum;$(SolutionDir)3rdparty\thor;$(SolutionDir)3rdparty\freetype\include;$(SolutionDir)3rdparty\zlib;$(SolutionDir)3rdparty\libpng;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/Zc:preprocessor %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
-        copy "$(TargetPath)" "$(SolutionDir)\bin\"
-copy "$(SolutionDir)\assets\sprites.png" "$(SolutionDir)\bin\"
-copy "$(SolutionDir)\assets\NotoSansJP-Regular.ttf" "$(SolutionDir)\bin\"</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\magic_enum;$(SolutionDir)3rdparty\thor;$(SolutionDir)3rdparty\freetype\include;$(SolutionDir)3rdparty\zlib;$(SolutionDir)3rdparty\libpng;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/Zc:preprocessor %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
-      <SubSystem>Windows</SubSystem>
+      <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
-        copy "$(TargetPath)" "$(SolutionDir)\bin\"
-copy "$(SolutionDir)\assets\sprites.png" "$(SolutionDir)\bin\"
-copy "$(SolutionDir)\assets\NotoSansJP-Regular.ttf" "$(SolutionDir)\bin\"</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -142,51 +115,16 @@ copy "$(SolutionDir)\assets\NotoSansJP-Regular.ttf" "$(SolutionDir)\bin\"</Comma
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)3rdparty\magic_enum;$(SolutionDir)3rdparty\thor;$(SolutionDir)3rdparty\freetype\include;$(SolutionDir)3rdparty\zlib;$(SolutionDir)3rdparty\libpng;</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalOptions>/Zc:preprocessor %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
-    <PostBuildEvent>
-      <Command>if not exist "$(SolutionDir)\bin" ( mkdir "$(SolutionDir)\bin" )
-        copy "$(TargetPath)" "$(SolutionDir)\bin\"
-copy "$(SolutionDir)\assets\sprites.png" "$(SolutionDir)\bin\"
-copy "$(SolutionDir)\assets\NotoSansJP-Regular.ttf" "$(SolutionDir)\bin\"</Command>
-    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AssetManager.cpp" />
-    <ClCompile Include="DumpExample.cpp" />
-    <ClCompile Include="Font.cpp" />
-    <ClCompile Include="Gameplay.cpp" />
-    <ClCompile Include="Levels.cpp" />
-    <ClCompile Include="Logging.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Picture.cpp" />
-    <ClCompile Include="Win32Platform.cpp" />
-    <ClCompile Include="Skybound.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\3rdparty\freetype\freetype.vcxproj">
-      <Project>{c0f6be5c-f3a8-47b5-ba00-f5503ca4ec67}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\3rdparty\libpng\libpng.vcxproj">
-      <Project>{8e769520-9c6f-48be-8550-ddd52e9c014e}</Project>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="Color.h" />
-    <ClInclude Include="Formatting.h" />
-    <ClInclude Include="Gameplay.h" />
-    <ClInclude Include="Profiler.h" />
-    <ClInclude Include="Settings.h" />
-    <ClInclude Include="Skybound.h" />
-    <ClInclude Include="Types2D.h" />
+    <ClCompile Include="injecter.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

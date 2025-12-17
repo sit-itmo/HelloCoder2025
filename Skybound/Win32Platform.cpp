@@ -9,6 +9,7 @@ class sWin32Platform : public sPlatform
 {
 private:
     sSize2D RenderSize;
+    bool    IsInjected = false;
     HWND   hWnd = NULL;
     sPicture BackBuffer;
     BITMAPINFO Bmi = { 0 };
@@ -22,7 +23,7 @@ private:
 
 public:
 
-    bool Setup(const sString& caption, const sSize2D& size);
+    bool Setup(const sString& caption, const sSize2D& size, long long exParam);
     void Loop();
     float GetTime();
     bool GetKeyState(KeyCode code);
@@ -175,11 +176,19 @@ void sWin32Platform::Reset()
 
 }
 
-bool sWin32Platform::Setup(const sString& caption, const sSize2D& size)
+bool sWin32Platform::Setup(const sString& caption, const sSize2D& size, long long exParam)
 {
     Reset();
     RenderSize = size;
-    InitWindow(caption);
+    if (exParam == 0)
+    {
+        InitWindow(caption);
+    }
+    else
+    {
+        IsInjected = true;
+        hWnd = (HWND)exParam;
+    }
     InitGraphics();
     return true;
 }
@@ -199,12 +208,15 @@ void sWin32Platform::Loop()
     {
         SKY_PROFSCOPE("main_fps");
 
-        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        if (IsInjected == false)
         {
-            if (msg.message == WM_QUIT)
-                g_running = false;
-            TranslateMessage(&msg);
-            DispatchMessage(&msg);
+            while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+            {
+                if (msg.message == WM_QUIT)
+                    g_running = false;
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+            }
         }
 
         DWORD currTime = GetTickCount();

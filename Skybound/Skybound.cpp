@@ -67,7 +67,7 @@ void Skybound::DESTROY()
 
 void WIN_InitConsole(void);
 
-void Skybound::Start()
+void Skybound::Start(long long arg, std::string subPath)
 {
     SKY_PRINTLN("[Skybound Hello!]");
     _Settings.Load(SKYBOUND_SETTINGS_FILE);
@@ -75,8 +75,8 @@ void Skybound::Start()
     SKY_PRINTLN("Loading...");
     pAssets = new sAssetManager();
     pGameplay = new sGameplay();
-    pGameplay->Init();
-    pPlatform->Setup("Skybound!", _Settings.ScreenSize);
+    pGameplay->Init(subPath);
+    pPlatform->Setup("Skybound!", _Settings.ScreenSize, arg);
     pPlatform->AddApplication(pGameplay);
     pPlatform->Loop();
 }

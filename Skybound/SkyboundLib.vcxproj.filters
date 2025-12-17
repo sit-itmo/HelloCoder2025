@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="Skybound.cpp" />
+    <ClCompile Include="Win32Platform.cpp" />
+    <ClCompile Include="Picture.cpp" />
+    <ClCompile Include="Logging.cpp" />
+    <ClCompile Include="DumpExample.cpp" />
+    <ClCompile Include="Font.cpp" />
+    <ClCompile Include="AssetManager.cpp" />
+    <ClCompile Include="Gameplay.cpp" />
+    <ClCompile Include="Levels.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Skybound.h" />
+    <ClInclude Include="Types2D.h" />
+    <ClInclude Include="Formatting.h" />
+    <ClInclude Include="Color.h" />
+    <ClInclude Include="Profiler.h" />
+    <ClInclude Include="Gameplay.h" />
+    <ClInclude Include="Settings.h" />
+  </ItemGroup>
+</Project>

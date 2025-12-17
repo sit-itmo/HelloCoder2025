@@ -226,7 +226,7 @@ public:
     };
     virtual ~sPlatform() {}
     virtual bool SetupConsole() = 0;
-    virtual bool Setup(const sString& caption, const sSize2D& size) = 0;
+    virtual bool Setup(const sString& caption, const sSize2D& size, long long exParam=0) = 0;
     virtual const sSize2D &ScreenSize() = 0;
     virtual void Loop()=0;
     virtual bool GetKeyState(KeyCode code)=0;
@@ -242,7 +242,7 @@ class sPlatformEmpty : public sPlatform
 public:
     ~sPlatformEmpty() {}
     bool SetupConsole() { return false; }
-    bool Setup(const sString& caption, const sSize2D& size) { return false; }
+    bool Setup(const sString& caption, const sSize2D& size, long long exParam) { return false; }
     const sSize2D& ScreenSize() { return _FakeSize; }
     void Loop() {}
     bool GetKeyState(KeyCode code) { return false; }
@@ -278,7 +278,7 @@ public:
     void DelEntity(SkyEntity* p_obj, int layer = -1);
 
     void UpdateCamera();
-    bool Init();
+    bool Init(const std::string& subPath);
     bool Update(sTime curTime, sTime delta);
     bool UpdateGui(sTime curTime, sTime delta);
     void Render(sPicture* p_buffer);
@@ -349,8 +349,7 @@ public:
 public:
     ~Skybound();
 
-    void Start();
-
+    void Start(long long arg = 0, std::string subPath = ".");
 
     void SetCurrentLevel(SkyLevel* val) {
         if (pCurrentLevel != nullptr) { delete pCurrentLevel; } 
