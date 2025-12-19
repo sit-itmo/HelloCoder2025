@@ -113,6 +113,8 @@ bool SetupConsole()
     return true;
 }
 
+#include <thread>
+
 int WINAPI WinMain(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,
@@ -135,15 +137,30 @@ int WINAPI WinMain(
     );
     InitializeCriticalSection(&cs);
 
+    //auto x = [](){};
+
     p_threadids = (DWORD*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(DWORD) * thread_count);
     p_hthreads = (HANDLE*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(HANDLE) * thread_count);
 
+#if 0
     UINT64 start_ticks = GetTickCount64();
+    std::thread ttt = std::thread([thread_count]()
+        {
+            int aaa = 0;
+            while (1)
+            {
+                printf("\n%d:%d %d - AAAAA", GetCurrentThreadId(), thread_count, aaa++);
+                Sleep(1000);
+            }
+        });
+#endif
+
     for (int i = 0; i < thread_count; i++)
     {
         p_hthreads[i] = CreateThread(NULL, 0, WorkerThreadFuncCounter, &val,
             0, p_threadids + i);
     }
+    while (true) Sleep(1);
     WaitForMultipleObjects(thread_count, p_hthreads, TRUE, INFINITE);
     printf("\n================= ALL threads are done %lld (%lld)!", val, GetTickCount64() - start_ticks);
 
